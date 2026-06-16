@@ -119,6 +119,8 @@
   .btn.small{padding:8px 12px;font-size:12px}
   .btn.export{background:#fff;color:var(--accent);border:1px solid var(--accent)}
   .help-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:#fff;color:var(--text);font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
+  .bell-wrap{position:relative;display:inline-flex}
+  .bell-wrap .bell-dot{position:absolute;top:-2px;right:-2px;width:14px;height:14px;background:var(--red);border-radius:50%;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;line-height:1}
   .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:300;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:90%;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
   .toast.error{background:var(--red)}
@@ -659,6 +661,7 @@ function renderSemana() {
       <div class="row between">
         <h1>Run Coach Daily</h1>
         <div class="header-actions">
+          <span class="bell-wrap" id="bellWrap" style="display:none"><button class="help-btn" id="btnBell" aria-label="Atualização">🔔</button><span class="bell-dot">1</span></span>
           <button class="help-btn" id="btnSettings" aria-label="Configurações">⚙</button>
           <button class="help-btn" id="btnHelp" aria-label="Ajuda">?</button>
         </div>
@@ -1110,6 +1113,9 @@ function attachHandlers() {
   if (btnVerSchema) btnVerSchema.addEventListener('click', openSchemaModal);
   const greetingCard = document.getElementById('greetingCard');
   if (greetingCard) greetingCard.addEventListener('click', openNomeModal);
+  const btnBell = document.getElementById('btnBell');
+  if (btnBell) btnBell.addEventListener('click', openUpdateModal);
+  if (pendingVersionInfo) showBell();
   const resumeBtn = document.getElementById('resumeBtn');
   if (resumeBtn) resumeBtn.addEventListener('click', retomarTreino);
   const resumeDiscard = document.getElementById('resumeDiscard');
@@ -1971,8 +1977,14 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '2.3';
+const APP_VERSION = '2.4';
 const CHANGELOG = [
+  { v: '2.4', date: '2026-06-16', items: [
+    'Sininho de notificação quando há nova versão disponível',
+    'Modal com novidades e botão "Atualizar agora"',
+    'Detecção via Service Worker (updatefound) + fallback via version.json',
+    'GitHub Actions atualiza version.json automaticamente a cada deploy',
+  ]},
   { v: '2.3', date: '2026-06-16', items: [
     'Estimativas de prova: auto-criação de corridas novas ao importar semana',
     'Badge "nova corrida" (azul) para corridas com dados completos no JSON',
@@ -2649,14 +2661,98 @@ function sincronizarStatusTreinos() {
   if (mudouHist) setHistory(hist);
 }
 
+/* ========== VERSION CHECK (SININHO) ========== */
+const VERSION_KEY = 'runcoach_versao';
+let pendingUpdate = null;
+let pendingVersionInfo = null;
+
+async function checkVersionJson() {
+  try {
+    const res = await fetch('/version.json', { cache: 'no-store' });
+    if (!res.ok) return;
+    const info = await res.json();
+    const saved = localStorage.getItem(VERSION_KEY);
+    if (!saved) {
+      localStorage.setItem(VERSION_KEY, info.versao);
+      return;
+    }
+    if (info.versao !== saved) {
+      pendingVersionInfo = info;
+      showBell();
+    }
+  } catch {}
+}
+
+function showBell() {
+  document.querySelectorAll('#bellWrap').forEach(el => el.style.display = 'inline-flex');
+}
+
+function hideBell() {
+  document.querySelectorAll('#bellWrap').forEach(el => el.style.display = 'none');
+}
+
+function openUpdateModal() {
+  const info = pendingVersionInfo;
+  if (!info) return;
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  const novidades = (info.novidades || []).map(n => `<li>${escapeHtml(n)}</li>`).join('');
+  back.innerHTML = `<div class="modal" style="padding:20px">
+    <h2 style="margin-bottom:4px">Nova versão disponível</h2>
+    <div class="muted" style="font-size:13px;margin-bottom:12px">v${escapeHtml(info.versao)} · ${info.data ? fmtDateBR(info.data) : ''}</div>
+    <div style="margin-bottom:14px">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px">Novidades</div>
+      <ul style="padding-left:18px;font-size:14px;line-height:1.6">${novidades || '<li>Melhorias e correções</li>'}</ul>
+    </div>
+    <button class="btn" id="updateNowBtn" style="margin-bottom:8px">Atualizar agora</button>
+    <button class="btn outline" id="updateLaterBtn">Depois</button>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#updateLaterBtn').addEventListener('click', () => back.remove());
+  back.querySelector('#updateNowBtn').addEventListener('click', () => {
+    back.remove();
+    doUpdate();
+  });
+}
+
+function doUpdate() {
+  if (pendingUpdate) {
+    pendingUpdate.postMessage({ type: 'SKIP_WAITING' });
+    return;
+  }
+  caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+    if (pendingVersionInfo) localStorage.setItem(VERSION_KEY, pendingVersionInfo.versao);
+    location.reload();
+  });
+}
+
 /* ========== INIT ========== */
 applyTheme(getSettings().theme);
 sincronizarStatusTreinos();
 render();
 scheduleDailyRefresh();
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (!newSW) return;
+        newSW.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            pendingUpdate = newSW;
+            checkVersionJson();
+          }
+        });
+      });
+    }).catch(() => {});
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (pendingVersionInfo) localStorage.setItem(VERSION_KEY, pendingVersionInfo.versao);
+      location.reload();
+    });
+  });
 }
+checkVersionJson();
 </script>
 </body>
 </html>

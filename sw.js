@@ -1,4 +1,4 @@
-const CACHE = 'runcoach-v16';
+const CACHE = 'runcoach-v17';
 const ASSETS = [
   '/',
   '/index.html',
@@ -8,7 +8,6 @@ const ASSETS = [
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS).catch(() => {})));
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
@@ -20,10 +19,21 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (url.pathname.startsWith('/.netlify/functions/')) return;
   if (e.request.method !== 'GET') return;
+
+  if (url.pathname === '/version.json') {
+    e.respondWith(fetch(e.request));
+    return;
+  }
 
   e.respondWith(
     caches.match(e.request).then((cached) => {
