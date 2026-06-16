@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.16-1224",
+  "versao": "2026.06.16-1236",
   "data": "2026-06-16",
-  "novidades": ["v2.5: Sininho sempre visível, ponto vermelho só com atualização"]
+  "novidades": ["fix: sininho faltando no header da tela principal"]
 }
