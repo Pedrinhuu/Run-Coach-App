@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.16-1321",
+  "versao": "2026.06.16-1339",
   "data": "2026-06-16",
-  "novidades": ["v2.6: Modo intervalado no treino (ciclos com sub-fases)"]
+  "novidades": ["v2.7: Fix voz ao encerrar, cache no sininho, botão limpar cache"]
 }
