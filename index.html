@@ -2106,6 +2106,7 @@ function encerrarTreino(cancelado) {
   const s = workoutState;
   if (!s || s.encerrado) return;
   s.encerrado = true;
+  try { speechSynthesis.cancel(); } catch {}
   clearActiveWorkout();
   if (s.rafId) cancelAnimationFrame(s.rafId);
   if (s.wakeLock) { try { s.wakeLock.release(); } catch {} }
@@ -2145,8 +2146,14 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '2.6';
+const APP_VERSION = '2.7';
 const CHANGELOG = [
+  { v: '2.7', date: '2026-06-16', items: [
+    'Fix: voz para imediatamente ao encerrar treino (speechSynthesis.cancel)',
+    'Fix: sininho agora sempre busca version.json sem cache ao abrir modal',
+    'Botão "Limpar cache e recarregar" no modal do sininho (versão atual)',
+    'Confirmação obrigatória antes de limpar cache',
+  ]},
   { v: '2.6', date: '2026-06-16', items: [
     'Modo intervalado no treino: ciclos com fases alternadas (leve/forte)',
     'Timer regressivo por sub-fase com referência de pace/velocidade',
@@ -2875,7 +2882,11 @@ function hideBellDot() {
   document.querySelectorAll('#bellDot').forEach(el => el.style.display = 'none');
 }
 
-function openUpdateModal() {
+async function openUpdateModal() {
+  try {
+    const res = await fetch('/version.json', { cache: 'no-store' });
+    if (res.ok) currentVersionInfo = await res.json();
+  } catch {}
   if (pendingVersionInfo) {
     openUpdateAvailableModal();
   } else {
@@ -2898,10 +2909,41 @@ function openUpToDateModal() {
       <ul style="padding-left:18px;font-size:14px;line-height:1.6">${novidades}</ul>
     </div>` : ''}
     <button class="btn" id="updateCloseBtn">Fechar</button>
+    <button class="btn outline" id="clearCacheBtn" style="margin-top:8px;color:var(--muted);border-color:var(--border);font-size:13px">Limpar cache e recarregar</button>
+    <div id="clearCacheConfirm" style="display:none;margin-top:10px;padding:12px;background:var(--bg2);border-radius:8px;text-align:center">
+      <div style="font-size:13px;margin-bottom:10px">Isso vai recarregar o app e limpar o cache. Continuar?</div>
+      <div class="row" style="justify-content:center;gap:10px">
+        <button class="btn" id="clearCacheYes" style="font-size:13px;padding:8px 16px">Sim, limpar</button>
+        <button class="btn outline" id="clearCacheNo" style="font-size:13px;padding:8px 16px">Cancelar</button>
+      </div>
+    </div>
   </div>`;
   document.body.appendChild(back);
   back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
   back.querySelector('#updateCloseBtn').addEventListener('click', () => back.remove());
+  back.querySelector('#clearCacheBtn').addEventListener('click', () => {
+    back.querySelector('#clearCacheConfirm').style.display = 'block';
+    back.querySelector('#clearCacheBtn').style.display = 'none';
+  });
+  back.querySelector('#clearCacheNo').addEventListener('click', () => {
+    back.querySelector('#clearCacheConfirm').style.display = 'none';
+    back.querySelector('#clearCacheBtn').style.display = '';
+  });
+  back.querySelector('#clearCacheYes').addEventListener('click', () => limparCacheERecarregar());
+}
+
+async function limparCacheERecarregar() {
+  if ('caches' in window) {
+    const cacheKeys = await caches.keys();
+    await Promise.all(cacheKeys.map(key => caches.delete(key)));
+  }
+  if ('serviceWorker' in navigator) {
+    const registration = await navigator.serviceWorker.ready;
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+  }
+  location.reload(true);
 }
 
 function openUpdateAvailableModal() {
