@@ -1,4 +1,4 @@
-const CACHE = 'runcoach-v21';
+const CACHE = 'runcoach-v22';
 const ASSETS = [
   '/',
   '/index.html',
@@ -23,6 +23,20 @@ self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((cls) => {
+      for (const c of cls) {
+        if (c.url.includes(self.location.origin)) {
+          return c.focus();
+        }
+      }
+      return clients.openWindow('/');
+    })
+  );
 });
 
 self.addEventListener('fetch', (e) => {
