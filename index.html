@@ -661,7 +661,7 @@ function renderSemana() {
       <div class="row between">
         <h1>Run Coach Daily</h1>
         <div class="header-actions">
-          <span class="bell-wrap" id="bellWrap" style="display:none"><button class="help-btn" id="btnBell" aria-label="Atualização">🔔</button><span class="bell-dot">1</span></span>
+          <span class="bell-wrap" id="bellWrap"><button class="help-btn" id="btnBell" aria-label="Atualização">🔔</button><span class="bell-dot" id="bellDot" style="display:none">1</span></span>
           <button class="help-btn" id="btnSettings" aria-label="Configurações">⚙</button>
           <button class="help-btn" id="btnHelp" aria-label="Ajuda">?</button>
         </div>
@@ -1115,7 +1115,7 @@ function attachHandlers() {
   if (greetingCard) greetingCard.addEventListener('click', openNomeModal);
   const btnBell = document.getElementById('btnBell');
   if (btnBell) btnBell.addEventListener('click', openUpdateModal);
-  if (pendingVersionInfo) showBell();
+  if (pendingVersionInfo) showBellDot();
   const resumeBtn = document.getElementById('resumeBtn');
   if (resumeBtn) resumeBtn.addEventListener('click', retomarTreino);
   const resumeDiscard = document.getElementById('resumeDiscard');
@@ -1977,8 +1977,14 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '2.4';
+const APP_VERSION = '2.5';
 const CHANGELOG = [
+  { v: '2.5', date: '2026-06-16', items: [
+    'Sininho sempre visível no header (não apenas quando há atualização)',
+    'Ponto vermelho aparece apenas quando há versão nova disponível',
+    'Clique sem atualização mostra versão atual + novidades instaladas',
+    'Clique com atualização mantém modal com "Atualizar agora" / "Depois"',
+  ]},
   { v: '2.4', date: '2026-06-16', items: [
     'Sininho de notificação quando há nova versão disponível',
     'Modal com novidades e botão "Atualizar agora"',
@@ -2665,12 +2671,14 @@ function sincronizarStatusTreinos() {
 const VERSION_KEY = 'runcoach_versao';
 let pendingUpdate = null;
 let pendingVersionInfo = null;
+let currentVersionInfo = null;
 
 async function checkVersionJson() {
   try {
     const res = await fetch('/version.json', { cache: 'no-store' });
     if (!res.ok) return;
     const info = await res.json();
+    currentVersionInfo = info;
     const saved = localStorage.getItem(VERSION_KEY);
     if (!saved) {
       localStorage.setItem(VERSION_KEY, info.versao);
@@ -2678,20 +2686,49 @@ async function checkVersionJson() {
     }
     if (info.versao !== saved) {
       pendingVersionInfo = info;
-      showBell();
+      showBellDot();
     }
   } catch {}
 }
 
-function showBell() {
-  document.querySelectorAll('#bellWrap').forEach(el => el.style.display = 'inline-flex');
+function showBellDot() {
+  document.querySelectorAll('#bellDot').forEach(el => el.style.display = 'flex');
 }
 
-function hideBell() {
-  document.querySelectorAll('#bellWrap').forEach(el => el.style.display = 'none');
+function hideBellDot() {
+  document.querySelectorAll('#bellDot').forEach(el => el.style.display = 'none');
 }
 
 function openUpdateModal() {
+  if (pendingVersionInfo) {
+    openUpdateAvailableModal();
+  } else {
+    openUpToDateModal();
+  }
+}
+
+function openUpToDateModal() {
+  const info = currentVersionInfo;
+  const savedVer = localStorage.getItem(VERSION_KEY) || APP_VERSION;
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  const novidades = info && info.novidades ? info.novidades.map(n => `<li>${escapeHtml(n)}</li>`).join('') : '';
+  back.innerHTML = `<div class="modal" style="padding:20px">
+    <h2 style="margin-bottom:4px">Versão atual</h2>
+    <div class="muted" style="font-size:13px;margin-bottom:12px">v${escapeHtml(info ? info.versao : savedVer)}${info && info.data ? ' · ' + fmtDateBR(info.data) : ''}</div>
+    <div style="font-size:15px;margin-bottom:14px">Você já está com a versão mais recente 🎉</div>
+    ${novidades ? `<div style="margin-bottom:14px">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px">Novidades desta versão</div>
+      <ul style="padding-left:18px;font-size:14px;line-height:1.6">${novidades}</ul>
+    </div>` : ''}
+    <button class="btn" id="updateCloseBtn">Fechar</button>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#updateCloseBtn').addEventListener('click', () => back.remove());
+}
+
+function openUpdateAvailableModal() {
   const info = pendingVersionInfo;
   if (!info) return;
   const back = document.createElement('div');
