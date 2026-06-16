@@ -1,0 +1,25 @@
+# Dependências
+node_modules/
+package-lock.json
+bun.lockb
+
+# Build
+.wrangler/
+.cloudflare/
+.netlify/
+dist/
+build/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*

@@ -1,0 +1,2435 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#FF5C00" />
+<title>Run Coach Daily</title>
+<link rel="manifest" href="/manifest.json" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#FFFFFF; --bg2:#F5F5F5; --accent:#FF5C00; --text:#1A1A1A;
+    --muted:#666; --green:#00C853; --red:#D32F2F; --yellow:#F9A825;
+    --border:#E5E5E5; --card:#FFFFFF; --modal:#FFFFFF;
+    --alert-red-bg:#FEF1F1; --alert-green-bg:#F0FBF3;
+    --badge-muted-bg:#F5F5F5; --badge-green-bg:#E0F7E9;
+    --badge-orange-bg:#FFE9D9; --badge-red-bg:#FCE0E0; --badge-yellow-bg:#FFF4D1;
+  }
+  [data-theme="dark"]{
+    --bg:#0E0E0E; --bg2:#1A1A1A; --text:#F2F2F2; --muted:#9A9A9A;
+    --border:#2A2A2A; --card:#161616; --modal:#1C1C1C;
+    --alert-red-bg:#2A1414; --alert-green-bg:#0F2418;
+    --badge-muted-bg:#222; --badge-green-bg:#163322;
+    --badge-orange-bg:#3A1F0A; --badge-red-bg:#3A1414; --badge-yellow-bg:#3A2E0A;
+    color-scheme:dark;
+  }
+  [data-theme="dark"] .card{background:var(--card)}
+  [data-theme="dark"] .modal{background:var(--modal)}
+  [data-theme="dark"] .field input,
+  [data-theme="dark"] .field textarea,
+  [data-theme="dark"] .field select{background:#222;color:var(--text);border-color:var(--border)}
+  [data-theme="dark"] .radio-row label{background:#222;color:var(--text)}
+  [data-theme="dark"] .btn.outline{background:transparent;color:var(--text);border-color:var(--border)}
+  [data-theme="dark"] .toggle{background:#222}
+  [data-theme="dark"] .toggle button.active{background:#333;color:var(--text)}
+  [data-theme="dark"] .bottom-nav{background:var(--card);border-top-color:var(--border)}
+  [data-theme="dark"] .help-btn{background:#222;color:var(--text);border-color:var(--border)}
+  [data-theme="dark"] .progress-bar-top{background:#222}
+  [data-theme="dark"] .history-item{background:var(--card);border-color:var(--border)}
+  html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-weight:400;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;display:flex;justify-content:center}
+  .app{width:100%;max-width:480px;min-height:100vh;display:flex;flex-direction:column;position:relative;background:var(--bg)}
+  .progress-bar-top{position:sticky;top:0;left:0;right:0;height:4px;background:var(--bg2);z-index:50}
+  .progress-bar-top .fill{height:100%;background:var(--accent);transition:width .4s}
+  .content{flex:1;padding:16px 16px 96px}
+  .num{font-weight:600;font-variant-numeric:tabular-nums}
+  h1{font-size:22px;font-weight:700;line-height:1.2}
+  h2{font-size:18px;font-weight:700}
+  h3{font-size:15px;font-weight:700}
+  .muted{color:var(--muted);font-size:13px}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:8px;font-weight:600;font-size:14px;background:var(--accent);color:#fff;width:100%;transition:opacity .2s}
+  .btn:active{opacity:.85}
+  .btn.secondary{background:var(--bg2);color:var(--text)}
+  .btn.outline{background:#fff;color:var(--text);border:1px solid var(--border)}
+  .btn.danger{background:var(--red);color:#fff}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px}
+  .card.alert-red{border-color:var(--red);background:var(--alert-red-bg)}
+  .card.alert-green{border-color:var(--green);background:var(--alert-green-bg)}
+  .card.highlight{border-color:var(--accent);border-width:2px}
+  .row{display:flex;align-items:center;gap:8px}
+  .row.between{justify-content:space-between}
+  .badge{display:inline-block;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;background:var(--bg2);color:var(--text)}
+  .badge.green{background:var(--badge-green-bg);color:var(--green)}
+  .badge.orange{background:var(--badge-orange-bg);color:var(--accent)}
+  .badge.red{background:var(--badge-red-bg);color:var(--red)}
+  .badge.yellow{background:var(--badge-yellow-bg);color:#C8A12B}
+  .badge.muted{background:var(--badge-muted-bg);color:var(--muted)}
+  .header-week{margin-bottom:16px}
+  .header-week .focus{font-size:13px;color:var(--muted);margin-top:4px}
+  .train-section{margin-top:10px}
+  .train-section .label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-bottom:2px}
+  .train-section .text{font-size:14px;line-height:1.4}
+  .toggle{display:inline-flex;background:var(--bg2);padding:3px;border-radius:8px;margin:8px 0}
+  .toggle button{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;color:var(--muted)}
+  .toggle button.active{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:64px;background:#fff;border-top:1px solid var(--border);display:flex;justify-content:center;z-index:100}
+  .bottom-nav-inner{display:flex;width:100%;max-width:480px}
+  .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:10px;font-weight:600}
+  .nav-btn svg{width:22px;height:22px}
+  .nav-btn.active{color:var(--accent)}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:200}
+  .modal{background:#fff;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;border-radius:8px 8px 0 0;padding:18px}
+  .modal h2{margin-bottom:12px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .field input,.field textarea,.field select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);font-family:inherit;font-size:14px;background:#fff;color:var(--text)}
+  .field textarea{min-height:64px;resize:vertical}
+  .field input[type=range]{padding:0}
+  .radio-row{display:flex;gap:6px}
+  .radio-row label{flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);text-transform:none;letter-spacing:0;margin:0}
+  .radio-row input{display:none}
+  .radio-row input:checked + span{display:block}
+  .radio-row label.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .slider-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px}
+  .history-item{display:flex;flex-direction:column;gap:6px;padding:12px;background:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+  .history-item .meta{display:flex;justify-content:space-between;font-size:13px}
+  .history-item .icons{display:flex;gap:6px;font-size:11px;color:var(--muted)}
+  .race-card{display:flex;flex-direction:column;gap:8px}
+  .race-card .name{font-weight:700;font-size:16px}
+  .race-card .date{font-size:13px;color:var(--muted)}
+  .countdown{font-weight:700;color:var(--accent)}
+  .loading{text-align:center;padding:20px;color:var(--muted);font-size:13px}
+  .spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--bg2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
+  .btn-row{display:flex;gap:8px}
+  .btn-row .btn{flex:1}
+  hr.sep{border:none;border-top:1px solid var(--border);margin:10px 0}
+  .alert-pill{display:inline-block;background:var(--red);color:#fff;font-size:11px;font-weight:600;padding:3px 8px;border-radius:8px;margin-right:6px}
+  .btn.small{padding:8px 12px;font-size:12px}
+  .btn.export{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+  .help-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:#fff;color:var(--text);font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:300;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:90%;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+  .toast.error{background:var(--red)}
+  .toast.success{background:var(--green)}
+  .help-list{padding-left:18px;font-size:14px;line-height:1.5}
+  .help-list li{margin-bottom:6px}
+  .btn.start{background:var(--accent);color:#fff;font-size:15px;padding:14px 16px}
+  .workout-overlay{position:fixed;inset:0;background:#0E0E0E;color:#fff;z-index:400;display:flex;flex-direction:column;padding:24px 20px;overflow:hidden}
+  .workout-overlay .phase-label{font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#999;text-align:center}
+  .workout-overlay .phase-name{font-size:32px;font-weight:700;text-align:center;margin-top:4px;color:#fff}
+  .workout-overlay .phase-name.principal{color:var(--accent)}
+  .workout-overlay .timer{font-size:104px;font-weight:700;line-height:1;text-align:center;margin:14px 0 8px;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+  .workout-overlay .timer.warn{color:var(--accent);animation:pulse .8s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .workout-overlay .target-box{background:rgba(255,255,255,.06);border-radius:8px;padding:16px;margin:12px 0;text-align:center}
+  .workout-overlay .target-box .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#999;font-weight:600}
+  .workout-overlay .target-box .val{font-size:28px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+  .workout-overlay .target-box .sub{font-size:12px;color:#bbb;margin-top:6px;line-height:1.4}
+  .workout-overlay .phase-progress{height:6px;background:rgba(255,255,255,.1);border-radius:8px;overflow:hidden;margin:8px 0}
+  .workout-overlay .phase-progress .fill{height:100%;background:var(--accent);transition:width 1s linear}
+  .workout-overlay .meta-row{display:flex;justify-content:space-between;font-size:12px;color:#999;margin-bottom:6px}
+  .workout-overlay .meta-row .num{color:#fff}
+  .workout-overlay .phase-dots{display:flex;gap:6px;justify-content:center;margin:10px 0}
+  .workout-overlay .phase-dots .dot{flex:1;max-width:60px;height:4px;background:rgba(255,255,255,.15);border-radius:2px}
+  .workout-overlay .phase-dots .dot.done{background:#666}
+  .workout-overlay .phase-dots .dot.current{background:var(--accent)}
+  .workout-overlay .controls{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+  .workout-overlay .controls .row{display:flex;gap:10px}
+  .workout-overlay .ctrl-btn{flex:1;padding:14px;border-radius:8px;font-weight:700;font-size:14px;background:rgba(255,255,255,.1);color:#fff;border:none}
+  .workout-overlay .ctrl-btn.primary{background:var(--accent)}
+  .workout-overlay .ctrl-btn.danger{background:rgba(211,47,47,.85)}
+  .workout-overlay .ctrl-btn:active{opacity:.8}
+  .workout-overlay.done .timer{color:var(--green)}
+  .header-actions{display:flex;gap:6px}
+  .copy-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:10px;background:var(--bg2);border-radius:8px;margin-bottom:8px}
+  .copy-row .copy-content{flex:1;min-width:0}
+  .copy-row .copy-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-bottom:3px}
+  .copy-row .copy-value{font-size:14px;word-break:break-word;color:var(--text)}
+  .copy-row .copy-btn{flex-shrink:0;background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer;min-width:64px}
+  .copy-row .copy-btn:disabled{background:var(--green);opacity:1}
+  .switch{position:relative;width:44px;height:24px;background:var(--border);border-radius:12px;cursor:pointer;transition:background .2s;flex-shrink:0}
+  .switch.on{background:var(--accent)}
+  .switch::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform .2s}
+  .switch.on::after{transform:translateX(20px)}
+  .setting-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+  .setting-row:last-child{border-bottom:none}
+  .setting-row .label{font-size:14px;font-weight:600}
+  .setting-row .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .mute-btn{position:absolute;top:24px;right:20px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;border:none;cursor:pointer}
+  .mute-btn.muted{background:rgba(211,47,47,.7)}
+  .picker-input{cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-size:14px;color:var(--text);font-weight:600}
+  .picker-input:active{opacity:.85}
+  .picker-input .ph{color:var(--muted);font-weight:400}
+  .picker-input .chev{color:var(--muted);font-size:12px}
+  .picker-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:250;display:flex;align-items:flex-end;justify-content:center}
+  .picker-sheet{background:var(--modal);width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:18px 14px 14px;box-shadow:0 -4px 16px rgba(0,0,0,.2)}
+  .picker-title{text-align:center;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text);margin-bottom:4px}
+  .picker-sub{text-align:center;font-size:12px;color:var(--muted);margin-bottom:12px}
+  .picker-cols{display:flex;height:200px;position:relative;align-items:center;gap:0}
+  .picker-cols::before{content:'';position:absolute;left:6px;right:6px;top:80px;height:40px;background:var(--bg2);border-radius:8px;z-index:0;pointer-events:none}
+  .picker-col{flex:1;height:200px;overflow-y:scroll;scroll-snap-type:y mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative;z-index:1}
+  .picker-col::-webkit-scrollbar{display:none}
+  .picker-col-pad{height:80px}
+  .picker-item{height:40px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-size:17px;font-weight:600;color:var(--muted);transition:color .15s,font-size .15s,opacity .15s;opacity:.5;font-variant-numeric:tabular-nums}
+  .picker-item.selected{color:var(--text);font-size:19px;opacity:1}
+  .picker-sep{width:14px;text-align:center;font-size:18px;color:var(--text);font-weight:700;z-index:1;font-variant-numeric:tabular-nums}
+  .picker-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .picker-actions .btn{width:100%}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="progress-bar-top"><div class="fill" id="progressFill" style="width:0%"></div></div>
+  <main class="content" id="content"></main>
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="nav-btn active" data-tab="semana">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        Semana
+      </button>
+      <button class="nav-btn" data-tab="historico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+        Histórico
+      </button>
+      <button class="nav-btn" data-tab="metricas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+        Métricas
+      </button>
+      <button class="nav-btn" data-tab="calendario">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+        Calendário
+      </button>
+    </div>
+  </nav>
+</div>
+
+<script>
+/* ========== CONSTANTS ========== */
+const RACES_DEFAULT = [
+  { id: 'r1', name: "Blue Run 5K", date: "2026-07-05", distance: "5K" },
+  { id: 'r2', name: "Corrida Vera Cruz 15K", date: "2026-12-31", distance: "15K" },
+  { id: 'r3', name: "Half Marathon 21K", date: "2027-06-06", distance: "21K" }
+];
+const PLAN_START = "2026-06-14";
+const PLAN_END = "2027-06-06";
+const TOTAL_WEEKS = Math.ceil((new Date(PLAN_END) - new Date(PLAN_START)) / (1000*60*60*24*7));
+
+const SYSTEM_PROMPT = `Você é um coach de corrida especializado em periodização para atletas amadores. Seu atleta é Pedro, 36 anos, Rio de Janeiro.
+
+PERFIL DO ATLETA:
+- Objetivo: completar 21km em junho/2027
+- PR de 5K: 29'56" (pace ~5'59"/km) em maio/2026
+- Nível atual: iniciante em corrida específica, boa base cardiovascular de HYROX
+- Restrição médica CRÍTICA: joelho direito com cirurgia de LCA + menisco (~2012). Dor leve = monitorar. Dor moderada = reduzir impacto imediatamente, sem progressão nessa semana.
+- Treinos paralelos: musculação (seg/qui), HYROX conditioning (ter/qua/sex)
+- Dias de corrida disponíveis: segunda, quinta, sábado
+- Pode correr na rua ou na esteira
+
+CALENDÁRIO DE CORRIDAS:
+- 05/jul/2026 - Blue Run 5K
+- 31/dez/2026 - Corrida Vera Cruz 15K
+- 06/jun/2027 - Half Marathon 21K
+
+PERIODIZAÇÃO MACRO:
+- Fase Base (jun-ago/2026): adaptação aeróbica, volume baixo, joelho prioritário
+- Fase Desenvolvimento (set-nov/2026): aumento progressivo de distância, introdução de ritmo
+- Fase Específica (dez/2026-mar/2027): treinos longos, simular distâncias de prova
+- Fase Pico + Taper (abr-jun/2027): refinar pace, reduzir volume, chegar fresco
+
+REGRAS DE PROGRESSÃO:
+- Volume máximo: +10% por semana
+- Se sensação média >= 4 em 3 treinos consecutivos: manter volume, não progredir
+- Se dor moderada no joelho em 2+ sessões: reduzir volume 20% e eliminar qualquer treino de tiro/intervalado
+- Semanas de recuperação a cada 4 semanas (reduzir volume ~30%)
+- Nas 2 semanas antes de cada corrida de prova: reduzir volume (taper)
+
+REGRAS DE FLEXIBILIDADE:
+- Treinos perdidos podem ser realocados para outro dia da semana se houver espaço
+- Se a semana fechou com apenas 1 treino concluído: não progredir, repetir foco da semana
+- Se a semana fechou com 2 treinos: progressão normal mas com cautela
+- Se a semana fechou com 3 treinos: progressão normal
+
+ANÁLISE DE DESVIO DE PACE:
+- Se pace real consistentemente mais lento que alvo (>45s): verificar se é esforço ou condição externa (calor, terreno). Pode ajustar faixa alvo.
+- Se pace real consistentemente mais rápido que alvo (>45s): alertar que está correndo rápido demais para a fase, ajustar faixa alvo para cima mas orientar sobre controle.
+
+FORMATO DE RESPOSTA (JSON puro, sem markdown, sem texto fora do JSON):
+{
+  "semana": <número inteiro>,
+  "fase": "<nome da fase>",
+  "foco_da_semana": "<frase curta descrevendo o objetivo da semana>",
+  "alerta_coach": "<null ou mensagem de alerta se houver gatilho ativo>",
+  "treinos": [
+    {
+      "dia": "Segunda",
+      "tipo": "<nome do treino>",
+      "objetivo": "<objetivo em 1 frase>",
+      "rua": {
+        "aquecimento": "<instrução>",
+        "principal": "<instrução detalhada com pace alvo ex: 7'30\\"/km - 8'00\\"/km>",
+        "desaquecimento": "<instrução>",
+        "duracao_total": "<ex: 30 min>",
+        "pace_alvo_central_segundos": <número>
+      },
+      "esteira": {
+        "aquecimento": "<instrução com velocidade em km/h>",
+        "principal": "<instrução detalhada com velocidade em km/h>",
+        "desaquecimento": "<instrução com velocidade em km/h>",
+        "duracao_total": "<ex: 30 min>"
+      }
+    },
+    { "dia": "Quinta", "...": "..." },
+    { "dia": "Sábado", "...": "..." }
+  ],
+  "observacao_coach": "<orientação importante da semana, máximo 2 frases>"
+}`;
+
+const INITIAL_WEEK = {
+  semana_atual: 1,
+  fase: "Base",
+  foco_da_semana: "Adaptação aeróbica - volume baixo, ritmo confortável",
+  alerta_coach: null,
+  treinos: [
+    {
+      dia: "Segunda", tipo: "Corrida Contínua Leve",
+      objetivo: "Ativar sem agredir. Primeira corrida com volume controlado.",
+      status: "Pendente", data_prevista: null,
+      rua: { aquecimento: "5 min caminhada", principal: "20 min corrida contínua em pace 7'30\"/km - 8'00\"/km. Ritmo onde consegue falar frases completas sem ofegar.", desaquecimento: "5 min caminhada", duracao_total: "30 min", pace_alvo_central_segundos: 465 },
+      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", principal: "20 min a 7,0-7,5 km/h", desaquecimento: "5 min caminhada a 5,0 km/h", duracao_total: "30 min" }
+    },
+    {
+      dia: "Quinta", tipo: "Fartlek Simples",
+      objetivo: "Introduzir variação de esforço sem intervalado clássico.",
+      status: "Pendente", data_prevista: null,
+      rua: { aquecimento: "5 min caminhada", principal: "20 min alternando: 2 min em pace 7'30\"/km - 8'00\"/km + 1 min em pace 6'30\"/km - 6'45\"/km. Repetir o ciclo (~6-7x).", desaquecimento: "5 min caminhada", duracao_total: "30 min", pace_alvo_central_segundos: 435 },
+      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", principal: "20 min alternando: 2 min a 7,0 km/h + 1 min a 8,5 km/h. Repetir o ciclo.", desaquecimento: "5 min caminhada a 5,0 km/h", duracao_total: "30 min" }
+    },
+    {
+      dia: "Sábado", tipo: "Longão Z2",
+      objetivo: "Construir base aeróbica. Treino mais importante da semana.",
+      status: "Pendente", data_prevista: null,
+      rua: { aquecimento: "5 min caminhada", principal: "30 min corrida contínua em pace 7'45\"/km - 8'30\"/km. Mais lento que segunda. Em subidas, mantém esforço, não o pace.", desaquecimento: "5 min caminhada", duracao_total: "40 min", pace_alvo_central_segundos: 488 },
+      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", principal: "30 min a 6,5-7,0 km/h", desaquecimento: "5 min caminhada a 5,0 km/h", duracao_total: "40 min" }
+    }
+  ],
+  observacao_coach: "Paces vão parecer lentos e devem parecer. Fase base é assim. A tentação de correr mais rápido é o principal caminho para lesão no joelho."
+};
+
+/* ========== STORAGE ========== */
+const KEYS = { week: 'runcoach_semana_atual', logs: 'runcoach_logs', history: 'runcoach_historico_semanas', races: 'runcoach_corridas' };
+function load(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } }
+function save(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+function getWeek() {
+  const stored = localStorage.getItem(KEYS.week);
+  if (stored) { try { return JSON.parse(stored); } catch {} }
+  return { semana_atual: 0, fase: '-', foco_da_semana: '', alerta_coach: null, treinos: [], observacao_coach: '' };
+}
+function setWeek(w) { save(KEYS.week, w); }
+function getLogs() { return load(KEYS.logs, []); }
+function setLogs(l) { save(KEYS.logs, l); }
+function getHistory() { return load(KEYS.history, []); }
+function setHistory(h) { save(KEYS.history, h); }
+function getRaces() {
+  const stored = localStorage.getItem(KEYS.races);
+  if (stored) { try { return JSON.parse(stored); } catch { return []; } }
+  if (localStorage.getItem(KEYS.week)) { save(KEYS.races, RACES_DEFAULT); return RACES_DEFAULT; }
+  return [];
+}
+function setRaces(r) { save(KEYS.races, r); }
+
+const APP_INITIALIZED = !!localStorage.getItem(KEYS.week);
+
+/* ========== HELPERS ========== */
+const DIAS_MAP = { Segunda:1, Terça:2, Quarta:3, Quinta:4, Sexta:5, Sábado:6, Domingo:0 };
+const DIAS_NOMES = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+function fmtDateBR(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+function todayISO() { return new Date().toISOString().slice(0,10); }
+function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / (1000*60*60*24)); }
+function parsePace(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d+)\s*['′:]\s*(\d+)/);
+  if (m) return parseInt(m[1]) * 60 + parseInt(m[2]);
+  const single = String(s).match(/^\s*(\d+)\s*['′]?\s*$/);
+  if (single) return parseInt(single[1]) * 60;
+  return null;
+}
+function parseTempo(s) {
+  if (!s) return null;
+  const t = String(s).trim();
+  const hms = t.match(/^(\d+)\s*[h:]\s*(\d+)\s*['′:m]?\s*(\d{1,2})?\s*["″s]?\s*$/i);
+  if (hms) {
+    const h = parseInt(hms[1]) || 0, m = parseInt(hms[2]) || 0, s2 = parseInt(hms[3] || '0');
+    if (t.includes('h') || (h > 0 && (m >= 60 || (hms[3] != null)))) return h*3600 + m*60 + s2;
+  }
+  const ms = t.match(/^(\d+)\s*['′:m]\s*(\d{1,2})\s*["″s]?\s*$/i);
+  if (ms) return parseInt(ms[1])*60 + parseInt(ms[2]);
+  const justMin = t.match(/^(\d+)\s*(?:min|')?$/i);
+  if (justMin) return parseInt(justMin[1]) * 60;
+  return null;
+}
+function fmtTempoInput(sec) {
+  if (sec == null) return '';
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  if (h > 0) return `${h}h${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}"`;
+  return `${m}'${String(s).padStart(2,'0')}"`;
+}
+function fmtPace(sec) {
+  if (sec == null) return '-';
+  const m = Math.floor(sec/60), s = sec%60;
+  return `${m}'${String(s).padStart(2,'0')}"`;
+}
+
+function progressPct() {
+  const w = getWeek();
+  return Math.min(100, Math.round(((w.semana_atual - 1) / TOTAL_WEEKS) * 100));
+}
+
+function updateProgressBar() {
+  document.getElementById('progressFill').style.width = progressPct() + '%';
+}
+
+/* ========== TRIGGERS ========== */
+function detectTriggers() {
+  const logs = getLogs();
+  const triggers = [];
+  const recent = logs.slice(-9);
+  // Gatilho 1: 3 treinos consecutivos com sensação >=4
+  let consec = 0;
+  for (const l of recent) {
+    if (l.sensacao >= 4) { consec++; if (consec >= 3) { triggers.push({ id:'sobrecarga', msg:'Você relatou treinos pesados em 3 sessões seguidas. O coach vai avaliar o plano antes de progredir.' }); break; } }
+    else consec = 0;
+  }
+  // Gatilho 2: 2+ dor moderada em últimas 2 semanas
+  const twoWeeksAgo = new Date(); twoWeeksAgo.setDate(twoWeeksAgo.getDate()-14);
+  const knee = logs.filter(l => l.joelho === 'moderada' && new Date(l.data) >= twoWeeksAgo);
+  if (knee.length >= 2) triggers.push({ id:'joelho', msg:'2 ou mais registros de dor moderada no joelho. Coach vai reduzir impacto.' });
+  // Gatilho 3: 3 semanas com <2 treinos completados
+  const hist = getHistory();
+  const last3 = hist.slice(-3);
+  const baixaConcl = last3.filter(w => (w.treinos||[]).filter(t => ['Concluído','Realocado'].includes(t.status)).length < 2).length;
+  if (last3.length >= 3 && baixaConcl >= 3) triggers.push({ id:'abandono', msg:'3 semanas com menos de 2 treinos concluídos. Coach vai revisar a abordagem.' });
+  // Gatilho 4: média desvio_pace últimas 6 fora de ±45s
+  const last6 = logs.slice(-6).filter(l => typeof l.desvio_pace === 'number');
+  if (last6.length === 6) {
+    const avg = last6.reduce((a,l)=>a+l.desvio_pace,0) / 6;
+    if (Math.abs(avg) > 45) triggers.push({ id:'pace', msg:`Desvio médio de pace de ${Math.round(avg)}s/km nas últimas 6 sessões. Coach vai recalibrar faixas alvo.` });
+  }
+  return triggers;
+}
+
+/* ========== ROUTER ========== */
+let currentTab = 'semana';
+let trainModeByIdx = {};
+const TAB_ORDER = ['semana', 'historico', 'metricas', 'calendario'];
+
+function setTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  render();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.tab === currentTab) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    setTab(b.dataset.tab);
+  }
+}));
+
+/* swipe horizontal entre abas */
+(function setupSwipe() {
+  let xStart = null, yStart = null, swiping = false;
+  document.body.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    if (document.querySelector('.modal-backdrop') || document.querySelector('.workout-overlay')) return;
+    xStart = e.touches[0].clientX;
+    yStart = e.touches[0].clientY;
+    swiping = true;
+  }, { passive: true });
+  document.body.addEventListener('touchend', (e) => {
+    if (!swiping || xStart == null) return;
+    swiping = false;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - xStart;
+    const dy = touch.clientY - yStart;
+    xStart = null; yStart = null;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx)) return;
+    const idx = TAB_ORDER.indexOf(currentTab);
+    if (idx < 0) return;
+    if (dx < 0 && idx < TAB_ORDER.length - 1) setTab(TAB_ORDER[idx + 1]);
+    else if (dx > 0 && idx > 0) setTab(TAB_ORDER[idx - 1]);
+  }, { passive: true });
+})();
+
+function render() {
+  updateProgressBar();
+  const el = document.getElementById('content');
+  if (currentTab === 'semana') el.innerHTML = renderSemana();
+  else if (currentTab === 'historico') el.innerHTML = renderHistorico();
+  else if (currentTab === 'metricas') el.innerHTML = renderMetricas();
+  else if (currentTab === 'calendario') el.innerHTML = renderCalendario();
+  attachHandlers();
+}
+
+/* ========== TAB 1: SEMANA ========== */
+function statusBadge(status) {
+  const map = { 'Pendente':'muted', 'Concluído':'green', 'Realocado':'orange', 'Perdido':'red' };
+  return `<span class="badge ${map[status]||'muted'}">${status}</span>`;
+}
+
+function predictedDate(trainIdx) {
+  const w = getWeek();
+  const t = w.treinos[trainIdx];
+  if (t.data_prevista) return t.data_prevista;
+  // estimate: this week's occurrence of that weekday
+  const today = new Date();
+  const target = DIAS_MAP[t.dia];
+  const diff = (target - today.getDay() + 7) % 7;
+  const d = new Date(today); d.setDate(today.getDate() + diff);
+  return d.toISOString().slice(0,10);
+}
+
+function isPastPredicted(trainIdx) {
+  const w = getWeek();
+  const t = w.treinos[trainIdx];
+  if (t.status !== 'Pendente') return false;
+  const dp = predictedDate(trainIdx);
+  return new Date(dp + 'T23:59:59') < new Date();
+}
+
+function renderSemana() {
+  const s = getSettings();
+  const nome = (s.name || '').trim();
+  const frase = fraseDoDia();
+  const vers = versiculoDoDia();
+  const greetingHtml = `<div class="card" id="greetingCard" style="background:linear-gradient(135deg,var(--accent),#FF8C3D);color:#fff;border:none;padding:16px 18px;cursor:pointer;position:relative">
+      <div style="font-size:13px;opacity:.9;font-weight:600">${saudacao()}${nome ? ', ' + escapeHtml(nome) : ''}!</div>
+      <div style="font-size:11px;opacity:.85;margin-top:2px">${escapeHtml(dataExtensa())}${nome ? '' : ' · <u>toque para personalizar</u>'}</div>
+      <span style="position:absolute;top:14px;right:16px;font-size:14px;opacity:.7">✎</span>
+    </div>
+    <div class="card" style="border-left:3px solid var(--accent)">
+      <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">Frase do dia</div>
+      <div style="font-size:14px;line-height:1.5;font-style:italic">"${escapeHtml(frase)}"</div>
+    </div>
+    <div class="card" style="border-left:3px solid #6A89CC">
+      <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;color:#6A89CC">Versículo do dia</div>
+      <div style="font-size:14px;line-height:1.5">"${escapeHtml(vers.texto)}"</div>
+      <div class="muted" style="font-size:12px;margin-top:6px;font-weight:600">— ${escapeHtml(vers.ref)}</div>
+    </div>`;
+
+  if (!localStorage.getItem(KEYS.week)) {
+    return `<div class="header-week">
+      <div class="row between">
+        <h1>Run Coach Daily</h1>
+        <div class="header-actions">
+          <button class="help-btn" id="btnSettings" aria-label="Configurações">⚙</button>
+          <button class="help-btn" id="btnHelp" aria-label="Ajuda">?</button>
+        </div>
+      </div>
+    </div>
+    ${greetingHtml}
+    <div class="card" style="padding:24px;text-align:center;margin-top:12px">
+      <div style="font-size:48px;margin-bottom:8px">🏃</div>
+      <h2 style="margin-bottom:8px">Bem-vindo!</h2>
+      <p class="muted" style="font-size:14px;line-height:1.5;margin-bottom:14px">
+        Comece importando o JSON do seu plano semanal de treino.
+      </p>
+      <div class="field" style="text-align:left">
+        <label>Como devemos te chamar? (opcional)</label>
+        <input type="text" id="fNome" placeholder="Seu nome" value="${escapeHtml(nome)}">
+      </div>
+      <button class="btn" id="btnImportarSemana" style="margin-top:6px">📥 Importar primeiro plano</button>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Como funciona</div>
+      <ol class="help-list">
+        <li>Peça ao seu coach (humano ou IA) um plano semanal no formato JSON</li>
+        <li>Cole o JSON aqui no botão acima</li>
+        <li>Acompanhe os treinos no celular durante a corrida</li>
+        <li>Registre cada sessão concluída</li>
+        <li>Veja suas métricas evoluírem ao longo do plano</li>
+      </ol>
+      <button class="btn outline" id="btnVerSchema" style="margin-top:12px;font-size:13px">Ver formato do JSON</button>
+    </div>`;
+  }
+  const w = getWeek();
+  let html = `<div class="header-week">
+    <div class="row between">
+      <h1>Semana ${w.semana_atual} · ${w.fase}</h1>
+      <div class="header-actions">
+        <button class="help-btn" id="btnSettings" aria-label="Configurações">⚙</button>
+        <button class="help-btn" id="btnHelp" aria-label="Ajuda">?</button>
+      </div>
+    </div>
+    <div class="focus">${w.foco_da_semana || ''}</div>
+  </div>
+  ${greetingHtml}`;
+  if (w.alerta_coach) html += `<div class="card alert-red"><strong>Atenção do coach:</strong><br>${w.alerta_coach}</div>`;
+  if (w.observacao_coach) html += `<div class="card" style="background:var(--bg2);border:none"><div class="muted" style="text-transform:uppercase;font-size:11px;letter-spacing:.5px;margin-bottom:4px">Observação do coach</div>${w.observacao_coach}</div>`;
+
+  w.treinos.forEach((t, idx) => {
+    const mode = trainModeByIdx[idx] || 'rua';
+    const data = t[mode];
+    const showRealocar = isPastPredicted(idx);
+    html += `<div class="card">
+      <div class="row between">
+        <div><h3>${t.dia} — ${t.tipo}</h3>${t.data_prevista ? `<div class="muted" style="font-size:11px;margin-top:2px">Data: ${fmtDateBR(t.data_prevista)}</div>`:''}</div>
+        ${statusBadge(t.status)}
+      </div>
+      <div class="muted" style="margin-top:4px;font-size:12px">${t.objetivo||''}</div>
+      <div class="toggle">
+        <button data-mode-idx="${idx}" data-mode="rua" class="${mode==='rua'?'active':''}">Rua</button>
+        <button data-mode-idx="${idx}" data-mode="esteira" class="${mode==='esteira'?'active':''}">Esteira</button>
+      </div>
+      <div class="train-section"><div class="label">Aquecimento</div><div class="text">${data.aquecimento||''}</div></div>
+      <div class="train-section"><div class="label">Principal</div><div class="text">${data.principal||''}</div></div>
+      <div class="train-section"><div class="label">Desaquecimento</div><div class="text">${data.desaquecimento||''}</div></div>
+      <div class="train-section"><div class="label">Duração total</div><div class="text num">${data.duracao_total||''}</div></div>
+      <button class="btn start" data-action="start" data-idx="${idx}" style="margin-top:12px">▶ Iniciar treino</button>
+      <button class="btn outline" data-action="copy" data-idx="${idx}" style="margin-top:8px;font-size:13px">📋 Copiar para Zepp</button>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn" data-action="log" data-idx="${idx}">Registrar</button>
+        ${showRealocar ? `<button class="btn outline" data-action="realocar" data-idx="${idx}">Realocar</button>`:''}
+      </div>
+    </div>`;
+  });
+  html += `<button class="btn outline" id="btnImportarSemana" style="margin-top:16px">📥 Importar próxima semana do coach</button>`;
+  return html;
+}
+
+/* ========== TAB 2: HISTÓRICO ========== */
+function renderHistorico() {
+  const logs = getLogs().slice().reverse();
+  if (logs.length === 0) return `<h1>Histórico</h1><div class="empty">Nenhum treino registrado ainda.</div>`;
+  let html = `<h1>Histórico</h1><div style="margin-top:12px"></div>`;
+  for (const l of logs) {
+    const d = new Date(l.data + 'T12:00:00');
+    const dia = DIAS_NOMES[d.getDay()];
+    const paceColor = l.desvio_pace == null ? 'muted' : Math.abs(l.desvio_pace) <= 30 ? 'green' : Math.abs(l.desvio_pace) <= 45 ? 'orange' : 'red';
+    const paceAlvo = l.pace_alvo_segundos != null ? fmtPace(l.pace_alvo_segundos) : '-';
+    const sensacaoEmoji = ['','😊','🙂','😐','😓','😩'][l.sensacao] || '';
+    let knee = '';
+    if (l.joelho === 'leve') knee = `<span style="color:var(--yellow)">⚠ joelho leve</span>`;
+    if (l.joelho === 'moderada') knee = `<span style="color:var(--red)">⚠ joelho moderado</span>`;
+    const atencao = l.seguiu_parametros === false ? `<span style="color:var(--red)">⚠ não seguiu</span>` : '';
+    html += `<div class="history-item">
+      <div class="meta"><strong>${fmtDateBR(l.data)} · ${dia}</strong><span class="badge ${paceColor}">${l.pace_real||'-'} / ${paceAlvo}</span></div>
+      <div class="muted" style="font-size:13px">${escapeHtml(l.tipo)} · ${escapeHtml(l.modo)}</div>
+      <div class="row" style="gap:12px;font-size:13px"><span class="num">${l.distancia||'-'} km</span><span>${sensacaoEmoji}</span></div>
+      ${(knee||atencao)?`<div class="icons">${knee} ${atencao}</div>`:''}
+      ${l.observacoes?`<div class="muted" style="font-size:12px;font-style:italic">"${escapeHtml(l.observacoes)}"</div>`:''}
+      <div class="row" style="gap:8px;margin-top:8px">
+        <button class="btn outline" data-action="edit-log" data-ts="${l.ts}" style="flex:1;padding:8px;font-size:12px">Editar</button>
+        <button class="btn outline" data-action="delete-log" data-ts="${l.ts}" style="flex:1;padding:8px;font-size:12px;color:var(--red);border-color:var(--red)">Excluir</button>
+      </div>
+    </div>`;
+  }
+  return html;
+}
+
+/* ========== TAB 3: MÉTRICAS ========== */
+function fmtTempo(sec) {
+  sec = Math.round(sec || 0);
+  if (sec <= 0) return '0min';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h}h ${String(m).padStart(2,'0')}min` : `${m}min`;
+}
+function tempoDeLog(l) {
+  if (typeof l.tempo_segundos === 'number' && l.tempo_segundos > 0) return l.tempo_segundos;
+  const ps = parsePace(l.pace_real);
+  return ps && l.distancia ? ps * l.distancia : 0;
+}
+function avgNums(arr) {
+  const xs = arr.filter(x => typeof x === 'number' && !isNaN(x));
+  return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+}
+
+function calcMetricas() {
+  const logs = getLogs();
+  const w = getWeek();
+  const hist = getHistory();
+  const races = getRaces();
+  const today = todayISO();
+
+  const logsSemana = logs.filter(l => l.semana === w.semana_atual);
+  const distSem = logsSemana.reduce((a, l) => a + (l.distancia || 0), 0);
+  const tempoSem = logsSemana.reduce((a, l) => a + tempoDeLog(l), 0);
+  const concluidosSem = w.treinos.filter(t => t.status === 'Concluído').length;
+  const sensSem = avgNums(logsSemana.map(l => l.sensacao));
+
+  const totLog = logs.length;
+  const distTot = logs.reduce((a, l) => a + (l.distancia || 0), 0);
+  const tempoTot = logs.reduce((a, l) => a + tempoDeLog(l), 0);
+  const sensTot = avgNums(logs.map(l => l.sensacao));
+
+  const comPaceDist = logs.filter(l => parsePace(l.pace_real) && l.distancia);
+  const totDistComPace = comPaceDist.reduce((a, l) => a + l.distancia, 0);
+  const paceMedio = totDistComPace > 0
+    ? comPaceDist.reduce((a, l) => a + parsePace(l.pace_real) * l.distancia, 0) / totDistComPace
+    : null;
+
+  const paces = logs.map(l => parsePace(l.pace_real)).filter(x => x);
+  const melhorPace = paces.length ? Math.min(...paces) : null;
+
+  const joelhoLeve = logs.filter(l => l.joelho === 'leve').length;
+  const joelhoMod = logs.filter(l => l.joelho === 'moderada').length;
+  const naoSeguiu = logs.filter(l => l.seguiu_parametros === false).length;
+
+  const semanasNoPlano = hist.length + 1;
+  const treinosPlanejados = semanasNoPlano * 3;
+  const adesao = treinosPlanejados > 0 ? (totLog / treinosPlanejados) * 100 : 0;
+
+  const porTipo = {};
+  for (const l of logs) {
+    if (!porTipo[l.tipo]) porTipo[l.tipo] = { n: 0, paceSum: 0, paceN: 0, distSum: 0 };
+    porTipo[l.tipo].n++;
+    const ps = parsePace(l.pace_real);
+    if (ps) { porTipo[l.tipo].paceSum += ps; porTipo[l.tipo].paceN++; }
+    if (l.distancia) porTipo[l.tipo].distSum += l.distancia;
+  }
+
+  const prim = logs.slice(0, 3).map(l => parsePace(l.pace_real)).filter(x => x);
+  const ult = logs.slice(-3).map(l => parsePace(l.pace_real)).filter(x => x);
+  const primAvg = prim.length ? avgNums(prim) : null;
+  const ultAvg = ult.length ? avgNums(ult) : null;
+  const evolucao = primAvg && ultAvg ? Math.round(primAvg - ultAvg) : null;
+
+  let streak = 0;
+  const todasSemanas = [...hist, w];
+  for (let i = todasSemanas.length - 1; i >= 0; i--) {
+    const sw = todasSemanas[i];
+    const c = (sw.treinos || []).filter(t => ['Concluído', 'Realocado'].includes(t.status)).length;
+    if (c >= 2) streak++; else break;
+  }
+
+  const proxCorrida = races.filter(r => r.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0] || null;
+  const diasProx = proxCorrida ? daysBetween(today, proxCorrida.date) : null;
+  const meta21 = races.find(r => /21|half/i.test(r.name + r.distance));
+  const diasMeta = meta21 ? daysBetween(today, meta21.date) : null;
+
+  return {
+    semanaNum: w.semana_atual, fase: w.fase, concluidosSem, distSem, tempoSem, sensSem,
+    totLog, distTot, tempoTot, sensTot, paceMedio, melhorPace, semanasNoPlano, adesao,
+    joelhoLeve, joelhoMod, naoSeguiu, porTipo, primAvg, ultAvg, evolucao, streak,
+    proxCorrida, diasProx, meta21, diasMeta,
+  };
+}
+
+function statCard(lbl, val, sub) {
+  return `<div style="flex:1;min-width:0">
+    <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">${lbl}</div>
+    <div class="num" style="font-size:22px;font-weight:700;margin-top:2px">${val}</div>
+    ${sub ? `<div class="muted" style="font-size:11px;margin-top:2px">${sub}</div>` : ''}
+  </div>`;
+}
+
+function renderMetricas() {
+  const m = calcMetricas();
+  const logs = getLogs();
+
+  if (logs.length === 0) {
+    return `<h1>Métricas</h1><div class="empty">Registre seu primeiro treino para ver as métricas aqui.</div>`;
+  }
+
+  let html = `<h1>Métricas</h1><div style="margin-top:12px"></div>`;
+
+  html += `<div class="card">
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Semana ${m.semanaNum} · ${escapeHtml(m.fase)}</div>
+    <div class="row" style="gap:14px;align-items:flex-start">
+      ${statCard('Treinos', `${m.concluidosSem}/3`)}
+      ${statCard('Distância', `${m.distSem.toFixed(1)}<span style="font-size:13px;font-weight:600"> km</span>`)}
+      ${statCard('Tempo', fmtTempo(m.tempoSem))}
+    </div>
+    ${m.sensSem != null ? `<div class="muted" style="font-size:12px;margin-top:10px">Sensação média: <span class="num" style="color:var(--text);font-weight:600">${m.sensSem.toFixed(1)}</span> / 5</div>` : ''}
+  </div>`;
+
+  html += `<div class="card">
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Resumo geral</div>
+    <div class="row" style="gap:14px;align-items:flex-start">
+      ${statCard('Treinos', m.totLog, `${m.semanasNoPlano} ${m.semanasNoPlano===1?'sem':'sems'} no plano`)}
+      ${statCard('Distância', `${m.distTot.toFixed(1)}<span style="font-size:13px;font-weight:600"> km</span>`)}
+      ${statCard('Tempo', fmtTempo(m.tempoTot))}
+    </div>
+    <hr class="sep">
+    <div class="row" style="gap:14px;align-items:flex-start">
+      ${statCard('Pace médio', m.paceMedio ? fmtPace(Math.round(m.paceMedio)) + '<span style="font-size:13px;font-weight:600">/km</span>' : '-')}
+      ${statCard('Melhor pace', m.melhorPace ? fmtPace(Math.round(m.melhorPace)) + '<span style="font-size:13px;font-weight:600">/km</span>' : '-')}
+      ${statCard('Adesão', `${Math.round(m.adesao)}<span style="font-size:13px;font-weight:600">%</span>`, `streak: ${m.streak} ${m.streak===1?'sem':'sems'}`)}
+    </div>
+  </div>`;
+
+  if (m.evolucao != null) {
+    const sinal = m.evolucao > 0 ? '↓' : (m.evolucao < 0 ? '↑' : '=');
+    const cor = m.evolucao > 0 ? 'var(--green)' : (m.evolucao < 0 ? 'var(--red)' : 'var(--muted)');
+    const txt = m.evolucao > 0 ? `${m.evolucao}s mais rápido` : (m.evolucao < 0 ? `${Math.abs(m.evolucao)}s mais lento` : 'estável');
+    html += `<div class="card">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Evolução de pace</div>
+      <div class="row between" style="font-size:13px">
+        <span>Primeiras 3</span><span class="num" style="font-weight:600">${fmtPace(Math.round(m.primAvg))}/km</span>
+      </div>
+      <div class="row between" style="font-size:13px;margin-top:4px">
+        <span>Últimas 3</span><span class="num" style="font-weight:600">${fmtPace(Math.round(m.ultAvg))}/km</span>
+      </div>
+      <div style="margin-top:8px;font-size:14px;font-weight:700;color:${cor}">${sinal} ${txt}</div>
+    </div>`;
+  }
+
+  const tipos = Object.entries(m.porTipo);
+  if (tipos.length > 0) {
+    html += `<div class="card">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Por tipo de treino</div>`;
+    for (const [tipo, info] of tipos) {
+      const paceAvg = info.paceN > 0 ? info.paceSum / info.paceN : null;
+      html += `<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <div>
+          <div style="font-weight:600">${escapeHtml(tipo)}</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">${info.n}× · ${info.distSum.toFixed(1)} km</div>
+        </div>
+        <div class="num" style="font-weight:600;text-align:right">${paceAvg ? fmtPace(Math.round(paceAvg)) + '/km' : '-'}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  if (m.joelhoLeve + m.joelhoMod + m.naoSeguiu > 0) {
+    html += `<div class="card">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Alertas registrados</div>
+      ${m.joelhoLeve > 0 ? `<div class="row between" style="font-size:13px;padding:4px 0"><span>Dor leve no joelho</span><span class="num" style="color:var(--yellow);font-weight:600">${m.joelhoLeve}×</span></div>` : ''}
+      ${m.joelhoMod > 0 ? `<div class="row between" style="font-size:13px;padding:4px 0"><span>Dor moderada no joelho</span><span class="num" style="color:var(--red);font-weight:600">${m.joelhoMod}×</span></div>` : ''}
+      ${m.naoSeguiu > 0 ? `<div class="row between" style="font-size:13px;padding:4px 0"><span>Não seguiu parâmetros</span><span class="num" style="color:var(--red);font-weight:600">${m.naoSeguiu}×</span></div>` : ''}
+    </div>`;
+  }
+
+  if (m.proxCorrida) {
+    html += `<div class="card highlight">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px">Próxima corrida</div>
+      <div style="font-weight:700">${escapeHtml(m.proxCorrida.name)}</div>
+      <div class="muted" style="font-size:12px;margin-top:2px">${fmtDateBR(m.proxCorrida.date)} · em <span class="num">${m.diasProx}</span> dias</div>
+    </div>`;
+  }
+  if (m.meta21 && m.diasMeta != null && m.diasMeta > 0) {
+    html += `<div class="card">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px">Meta principal</div>
+      <div style="font-weight:700">${escapeHtml(m.meta21.name)}</div>
+      <div class="muted" style="font-size:12px;margin-top:2px">em <span class="num">${m.diasMeta}</span> dias</div>
+    </div>`;
+  }
+
+  return html;
+}
+
+/* ========== TAB 4: CALENDÁRIO ========== */
+function renderCalendario() {
+  const races = getRaces().slice().sort((a, b) => a.date.localeCompare(b.date));
+  const today = todayISO();
+  const upcoming = races.filter(r => r.date >= today);
+  const nextRace = upcoming[0];
+  let html = `<div class="row between" style="margin-bottom:12px">
+    <h1>Calendário</h1>
+    <button class="btn small" id="btnAddRace" style="width:auto;padding:8px 14px">+ Nova</button>
+  </div>`;
+  if (races.length === 0) {
+    html += `<div class="empty">Nenhuma corrida cadastrada.</div>`;
+    return html;
+  }
+  for (const r of races) {
+    const isPast = r.date < today;
+    const isHigh = nextRace && r.id === nextRace.id;
+    const days = daysBetween(today, r.date);
+    html += `<div class="card race-card ${isHigh?'highlight':''}">
+      <div class="row between">
+        <div class="name">${escapeHtml(r.name)}</div>
+        <div class="row" style="gap:6px">
+          <span class="badge orange">${escapeHtml(r.distance)}</span>
+          <button class="help-btn" data-action="edit-race" data-id="${r.id}" aria-label="Editar" style="width:24px;height:24px;font-size:11px">✎</button>
+          <button class="help-btn" data-action="delete-race" data-id="${r.id}" aria-label="Remover" style="width:24px;height:24px;font-size:12px">✕</button>
+        </div>
+      </div>
+      <div class="date">${fmtDateBR(r.date)}</div>
+      <div class="countdown">${isPast ? 'Concluída' : (days === 0 ? 'Hoje!' : `em ${days} dias`)}</div>
+      ${r.time_estimate ? `<div class="row" style="gap:6px;margin-top:6px;font-size:13px;align-items:center"><span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Tempo estimado</span><span class="num" style="font-weight:700;color:var(--accent)">${escapeHtml(r.time_estimate)}</span>${r.estimate_pace ? `<span class="muted" style="font-size:12px">· pace ${escapeHtml(r.estimate_pace)}</span>` : ''}</div>` : ''}
+    </div>`;
+  }
+  return html;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openRaceModal(existingId) {
+  const races = getRaces();
+  const existing = existingId ? races.find(r => r.id === existingId) : null;
+  const isEdit = !!existing;
+  const def = existing || {};
+
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>${isEdit ? 'Editar corrida' : 'Nova corrida'}</h2>
+    <div class="field"><label>Nome</label><input type="text" id="rNome" placeholder="ex: Maratona do Rio" value="${escapeHtml(def.name || '')}"></div>
+    <div class="field"><label>Data</label>${pickerInputHtml('rData', fmtDateBR(def.date || todayISO()), 'Selecionar data')}</div>
+    <div class="field"><label>Distância</label><input type="text" id="rDist" placeholder="ex: 10K, 21K, 42K" value="${escapeHtml(def.distance || '')}"></div>
+    <div class="field"><label>Tempo estimado <span class="muted" style="text-transform:none;letter-spacing:0">(opcional — pedir ao coach)</span></label>${pickerInputHtml('rTime', def.time_estimate || '', "selecionar tempo")}</div>
+    <div class="field"><label>Pace estimado <span class="muted" style="text-transform:none;letter-spacing:0">(opcional)</span></label>${pickerInputHtml('rPace', def.estimate_pace || '', "ex: 5'59\"/km")}</div>
+    <div class="btn-row">
+      <button class="btn outline" id="raceCancel">Cancelar</button>
+      <button class="btn" id="raceSave">Salvar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#raceCancel').addEventListener('click', () => back.remove());
+
+  const rcData = back.querySelector('#rData');
+  rcData.dataset.value = def.date || todayISO();
+  rcData.addEventListener('click', () => {
+    openDatePicker(rcData.dataset.value, (iso) => pickerInputSet(rcData, iso, fmtDateBR(iso)));
+  });
+
+  const rcTime = back.querySelector('#rTime');
+  const rcTimeInitial = parseTempo(def.time_estimate);
+  rcTime.dataset.value = rcTimeInitial != null ? String(rcTimeInitial) : '';
+  rcTime.addEventListener('click', () => {
+    const cur = parseInt(rcTime.dataset.value) || 0;
+    openTempoPicker(cur, ({ seconds, text }) => pickerInputSet(rcTime, String(seconds), text));
+  });
+
+  const rcPace = back.querySelector('#rPace');
+  const rcPaceInitial = parsePace(def.estimate_pace);
+  rcPace.dataset.value = rcPaceInitial != null ? String(rcPaceInitial) : '';
+  rcPace.addEventListener('click', () => {
+    const cur = parseInt(rcPace.dataset.value) || 0;
+    openPacePicker(cur, ({ seconds, text }) => pickerInputSet(rcPace, String(seconds), text + '/km'));
+  });
+
+  back.querySelector('#raceSave').addEventListener('click', () => {
+    const nome = back.querySelector('#rNome').value.trim();
+    const data = rcData.dataset.value;
+    const dist = back.querySelector('#rDist').value.trim() || '-';
+    const tempoSeg = parseInt(rcTime.dataset.value) || null;
+    const tempo = tempoSeg ? fmtTempoInput(tempoSeg) : '';
+    const paceSeg = parseInt(rcPace.dataset.value) || null;
+    const pace = paceSeg ? `${Math.floor(paceSeg/60)}'${String(paceSeg%60).padStart(2,'0')}"/km` : '';
+    if (!nome) { alert('Informe o nome da corrida'); return; }
+    if (!data) { alert('Informe a data'); return; }
+    const all = getRaces();
+    if (isEdit) {
+      const i = all.findIndex(r => r.id === existingId);
+      if (i >= 0) {
+        all[i] = { ...all[i], name: nome, date: data, distance: dist, time_estimate: tempo || null, estimate_pace: pace || null };
+        setRaces(all);
+        back.remove();
+        render();
+        toast('Corrida atualizada', 'success');
+      }
+    } else {
+      all.push({ id: 'r' + Date.now(), name: nome, date: data, distance: dist, time_estimate: tempo || null, estimate_pace: pace || null });
+      setRaces(all);
+      back.remove();
+      render();
+      toast('Corrida adicionada', 'success');
+    }
+  });
+}
+function openAddRaceModal() { openRaceModal(null); }
+
+function deletarCorrida(id) {
+  const races = getRaces();
+  const r = races.find(x => x.id === id);
+  if (!r) return;
+  if (!confirm(`Remover "${r.name}"?`)) return;
+  setRaces(races.filter(x => x.id !== id));
+  render();
+  toast('Corrida removida');
+}
+
+/* ========== HANDLERS ========== */
+function attachHandlers() {
+  document.querySelectorAll('[data-mode-idx]').forEach(b => b.addEventListener('click', () => {
+    trainModeByIdx[b.dataset.modeIdx] = b.dataset.mode;
+    render();
+  }));
+  document.querySelectorAll('[data-action="log"]').forEach(b => b.addEventListener('click', () => openLogModal(parseInt(b.dataset.idx))));
+  document.querySelectorAll('[data-action="realocar"]').forEach(b => b.addEventListener('click', () => openRealocarModal(parseInt(b.dataset.idx))));
+  document.querySelectorAll('[data-action="start"]').forEach(b => b.addEventListener('click', () => iniciarTreino(parseInt(b.dataset.idx))));
+  document.querySelectorAll('[data-action="copy"]').forEach(b => b.addEventListener('click', () => openCopyModal(parseInt(b.dataset.idx))));
+  const btnHelp = document.getElementById('btnHelp');
+  if (btnHelp) btnHelp.addEventListener('click', openHelpModal);
+  const btnSettings = document.getElementById('btnSettings');
+  if (btnSettings) btnSettings.addEventListener('click', openSettingsModal);
+  const btnImp = document.getElementById('btnImportarSemana');
+  if (btnImp) btnImp.addEventListener('click', () => {
+    const nomeEl = document.getElementById('fNome');
+    if (nomeEl) {
+      const cur = getSettings();
+      setSettings({ ...cur, name: nomeEl.value.trim() });
+    }
+    openImportarSemanaModal();
+  });
+  const btnVerSchema = document.getElementById('btnVerSchema');
+  if (btnVerSchema) btnVerSchema.addEventListener('click', openSchemaModal);
+  const greetingCard = document.getElementById('greetingCard');
+  if (greetingCard) greetingCard.addEventListener('click', openNomeModal);
+  const btnAddRace = document.getElementById('btnAddRace');
+  if (btnAddRace) btnAddRace.addEventListener('click', openAddRaceModal);
+  document.querySelectorAll('[data-action="delete-race"]').forEach(b => b.addEventListener('click', () => deletarCorrida(b.dataset.id)));
+  document.querySelectorAll('[data-action="edit-race"]').forEach(b => b.addEventListener('click', () => openRaceModal(b.dataset.id)));
+  document.querySelectorAll('[data-action="edit-log"]').forEach(b => b.addEventListener('click', () => {
+    const ts = parseInt(b.dataset.ts);
+    const log = getLogs().find(x => x.ts === ts);
+    if (log) openLogModal(log.train_idx, log);
+  }));
+  document.querySelectorAll('[data-action="delete-log"]').forEach(b => b.addEventListener('click', () => deletarLog(parseInt(b.dataset.ts))));
+}
+
+/* ========== MODAL: LOG ========== */
+function openLogModal(idx, existingLog) {
+  const w = getWeek();
+  const t = existingLog
+    ? { dia: existingLog.dia, tipo: existingLog.tipo, rua: { pace_alvo_central_segundos: existingLog.pace_alvo_segundos } }
+    : w.treinos[idx];
+  const isEdit = !!existingLog;
+  const def = existingLog || {};
+  const modoIni = (def.modo || 'Rua');
+  const joelhoIni = def.joelho || 'sem dor';
+  const seguiuIni = def.seguiu_parametros === false ? 'nao' : 'sim';
+  const sensIni = def.sensacao || 3;
+
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>${isEdit ? 'Editar' : 'Registrar'}: ${escapeHtml(t.dia)} · ${escapeHtml(t.tipo)}</h2>
+    <div class="field"><label>Tipo</label>
+      <div class="radio-row" id="rrModo">
+        <label class="${modoIni==='Rua'?'sel':''}"><input type="radio" name="modo" value="Rua" ${modoIni==='Rua'?'checked':''}><span>Rua</span></label>
+        <label class="${modoIni==='Esteira'?'sel':''}"><input type="radio" name="modo" value="Esteira" ${modoIni==='Esteira'?'checked':''}><span>Esteira</span></label>
+      </div>
+    </div>
+    <div class="field"><label>Data efetiva</label>${pickerInputHtml('fData', def.data ? fmtDateBR(def.data) : fmtDateBR(todayISO()), 'Selecionar data')}</div>
+    <div class="field"><label>Pace médio real</label>${pickerInputHtml('fPace', def.pace_real || '', "ex: 7'45\"")}</div>
+    <div class="field"><label>Distância percorrida (km)</label>${pickerInputHtml('fDist', def.distancia != null ? def.distancia.toFixed(2).replace('.', ',') + ' km' : '', 'ex: 4,20 km')}</div>
+    <div class="field"><label>Tempo do treino</label>${pickerInputHtml('fTempo', def.tempo_segundos != null ? fmtTempoInput(def.tempo_segundos) : '', "ex: 30'00\"")}</div>
+    <div class="field"><label>Sensação geral: <span id="lblSens" class="num">${sensIni}</span></label>
+      <input type="range" id="fSens" min="1" max="5" value="${sensIni}">
+      <div class="slider-labels"><span>Muito fácil</span><span>Ok</span><span>Muito pesado</span></div>
+    </div>
+    <div class="field"><label>Joelho</label>
+      <div class="radio-row" id="rrJoelho">
+        <label class="${joelhoIni==='sem dor'?'sel':''}"><input type="radio" name="joelho" value="sem dor" ${joelhoIni==='sem dor'?'checked':''}><span>Sem dor</span></label>
+        <label class="${joelhoIni==='leve'?'sel':''}"><input type="radio" name="joelho" value="leve" ${joelhoIni==='leve'?'checked':''}><span>Dor leve ⚠</span></label>
+        <label class="${joelhoIni==='moderada'?'sel':''}"><input type="radio" name="joelho" value="moderada" ${joelhoIni==='moderada'?'checked':''}><span>Moderada ⚠</span></label>
+      </div>
+    </div>
+    <div class="field"><label>Seguiu os parâmetros?</label>
+      <div class="radio-row" id="rrSeguiu">
+        <label class="${seguiuIni==='sim'?'sel':''}"><input type="radio" name="seguiu" value="sim" ${seguiuIni==='sim'?'checked':''}><span>Sim</span></label>
+        <label class="${seguiuIni==='nao'?'sel':''}"><input type="radio" name="seguiu" value="nao" ${seguiuIni==='nao'?'checked':''}><span>Não</span></label>
+      </div>
+    </div>
+    <div class="field" id="fMotivoWrap" style="display:${seguiuIni==='nao'?'block':'none'}"><label>O que aconteceu?</label><textarea id="fMotivo">${escapeHtml(def.motivo_desvio || '')}</textarea></div>
+    <div class="field"><label>Observações</label><textarea id="fObs">${escapeHtml(def.observacoes || '')}</textarea></div>
+    <div class="btn-row">
+      <button class="btn outline" id="btnCancel">Cancelar</button>
+      <button class="btn" id="btnSave">Salvar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelectorAll('.radio-row').forEach(row => {
+    row.querySelectorAll('label').forEach(lab => {
+      lab.addEventListener('click', () => {
+        row.querySelectorAll('label').forEach(l => l.classList.remove('sel'));
+        lab.classList.add('sel');
+        lab.querySelector('input').checked = true;
+        if (row.id === 'rrSeguiu') {
+          const val = row.querySelector('input:checked').value;
+          back.querySelector('#fMotivoWrap').style.display = val === 'nao' ? 'block' : 'none';
+        }
+      });
+    });
+  });
+  back.querySelector('#fSens').addEventListener('input', (e) => back.querySelector('#lblSens').textContent = e.target.value);
+  back.querySelector('#btnCancel').addEventListener('click', () => back.remove());
+
+  const elData = back.querySelector('#fData');
+  elData.dataset.value = def.data || todayISO();
+  elData.dataset.placeholder = 'Selecionar data';
+  elData.addEventListener('click', () => {
+    openDatePicker(elData.dataset.value, (iso) => {
+      pickerInputSet(elData, iso, fmtDateBR(iso));
+    });
+  });
+
+  const elPace = back.querySelector('#fPace');
+  const paceInicial = parsePace(def.pace_real);
+  elPace.dataset.value = paceInicial != null ? String(paceInicial) : '';
+  elPace.dataset.placeholder = "ex: 7'45\"";
+  elPace.addEventListener('click', () => {
+    const cur = parseInt(elPace.dataset.value) || 0;
+    openPacePicker(cur, ({ seconds, text }) => {
+      pickerInputSet(elPace, String(seconds), text);
+    });
+  });
+
+  const elDist = back.querySelector('#fDist');
+  elDist.dataset.value = def.distancia != null ? String(def.distancia) : '';
+  elDist.dataset.placeholder = 'ex: 4,20 km';
+  elDist.addEventListener('click', () => {
+    const cur = parseFloat(elDist.dataset.value) || 0;
+    openDistPicker(cur, (km) => {
+      pickerInputSet(elDist, String(km), km.toFixed(2).replace('.', ',') + ' km');
+    });
+  });
+
+  const elTempo = back.querySelector('#fTempo');
+  elTempo.dataset.value = def.tempo_segundos != null ? String(def.tempo_segundos) : '';
+  elTempo.dataset.placeholder = "ex: 30'00\"";
+  elTempo.addEventListener('click', () => {
+    const cur = parseInt(elTempo.dataset.value) || 0;
+    openTempoPicker(cur, ({ seconds, text }) => {
+      pickerInputSet(elTempo, String(seconds), text);
+    });
+  });
+
+  back.querySelector('#btnSave').addEventListener('click', () => {
+    const modo = back.querySelector('input[name=modo]:checked').value;
+    const data = elData.dataset.value;
+    const paceSeg = parseInt(elPace.dataset.value) || null;
+    const paceTxt = paceSeg ? fmtPace(paceSeg) : '';
+    const dist = parseFloat(elDist.dataset.value) || null;
+    const tempoSeg = parseInt(elTempo.dataset.value) || null;
+    const sensacao = parseInt(back.querySelector('#fSens').value);
+    const joelho = back.querySelector('input[name=joelho]:checked').value;
+    const seguiu = back.querySelector('input[name=seguiu]:checked').value === 'sim';
+    const motivo = back.querySelector('#fMotivo').value.trim();
+    const obs = back.querySelector('#fObs').value.trim();
+    if (!data) { alert('Informe a data'); return; }
+    if (!seguiu && !motivo) { alert('Descreva o que aconteceu'); return; }
+    const paceReal = paceSeg;
+    const paceAlvo = (t.rua && t.rua.pace_alvo_central_segundos) || def.pace_alvo_segundos || null;
+    const desvio = (paceReal != null && paceAlvo != null) ? paceReal - paceAlvo : null;
+
+    if (isEdit) {
+      const logs = getLogs();
+      const i = logs.findIndex(x => x.ts === existingLog.ts);
+      if (i >= 0) {
+        logs[i] = {
+          ...logs[i], data, modo,
+          pace_real: paceTxt || null, desvio_pace: desvio,
+          distancia: dist, tempo_segundos: tempoSeg,
+          sensacao, joelho,
+          seguiu_parametros: seguiu, motivo_desvio: seguiu ? null : motivo,
+          observacoes: obs || null,
+        };
+        setLogs(logs);
+      }
+      back.remove();
+      render();
+      toast('Treino atualizado', 'success');
+      return;
+    }
+
+    const log = {
+      data, dia: t.dia, tipo: t.tipo, modo,
+      pace_real: paceTxt || null, pace_alvo_segundos: paceAlvo || null,
+      desvio_pace: desvio, distancia: dist, tempo_segundos: tempoSeg,
+      sensacao, joelho,
+      seguiu_parametros: seguiu, motivo_desvio: seguiu ? null : motivo,
+      observacoes: obs || null, semana: getWeek().semana_atual,
+      train_idx: idx, ts: Date.now()
+    };
+    const logs = getLogs(); logs.push(log); setLogs(logs);
+    const w2 = getWeek(); w2.treinos[idx].status = 'Concluído'; w2.treinos[idx].data_efetiva = data; setWeek(w2);
+    back.remove();
+    render();
+  });
+}
+
+function deletarLog(ts) {
+  const logs = getLogs();
+  const l = logs.find(x => x.ts === ts);
+  if (!l) return;
+  if (!confirm(`Excluir treino de ${fmtDateBR(l.data)} (${l.tipo})?`)) return;
+  const restantes = logs.filter(x => x.ts !== ts);
+  setLogs(restantes);
+
+  const aindaTem = restantes.some(x => x.semana === l.semana && x.train_idx === l.train_idx);
+  if (!aindaTem) {
+    const w = getWeek();
+    if (l.semana === w.semana_atual && w.treinos[l.train_idx]) {
+      w.treinos[l.train_idx].status = 'Pendente';
+      delete w.treinos[l.train_idx].data_efetiva;
+      setWeek(w);
+    } else {
+      const hist = getHistory();
+      const idxH = hist.findIndex(h => h.semana_atual === l.semana);
+      if (idxH >= 0 && hist[idxH].treinos[l.train_idx]) {
+        hist[idxH].treinos[l.train_idx].status = 'Pendente';
+        delete hist[idxH].treinos[l.train_idx].data_efetiva;
+        setHistory(hist);
+      }
+    }
+  }
+  render();
+  toast('Treino excluído');
+}
+
+/* ========== MODAL: REALOCAR ========== */
+function openRealocarModal(idx) {
+  const w = getWeek();
+  const t = w.treinos[idx];
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Realocar treino</h2>
+    <div class="muted" style="margin-bottom:12px">${t.dia} · ${t.tipo}</div>
+    <div class="field"><label>Nova data</label>${pickerInputHtml('rData', fmtDateBR(todayISO()), 'Selecionar data')}</div>
+    <div class="btn-row">
+      <button class="btn outline" id="rCancel">Cancelar</button>
+      <button class="btn" id="rSave">Realocar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#rCancel').addEventListener('click', () => back.remove());
+  const rElData = back.querySelector('#rData');
+  rElData.dataset.value = todayISO();
+  rElData.addEventListener('click', () => {
+    openDatePicker(rElData.dataset.value, (iso) => pickerInputSet(rElData, iso, fmtDateBR(iso)));
+  });
+  back.querySelector('#rSave').addEventListener('click', () => {
+    const d = rElData.dataset.value;
+    if (!d) return;
+    const w2 = getWeek();
+    w2.treinos[idx].status = 'Realocado';
+    w2.treinos[idx].data_prevista = d;
+    setWeek(w2);
+    back.remove();
+    render();
+  });
+}
+
+/* ========== GERAR PRÓXIMA SEMANA ========== */
+function openImportarSemanaModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Importar próxima semana</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:10px">Cole o JSON gerado pelo coach no Claude. A semana atual será arquivada no histórico.</p>
+    <div class="field">
+      <label>JSON da semana</label>
+      <textarea id="impJson" style="min-height:180px;font-family:monospace;font-size:12px" placeholder='{"semana": 2, "fase": "Base", ...}'></textarea>
+    </div>
+    <div id="impPreview"></div>
+    <div class="btn-row">
+      <button class="btn outline" id="impCancel">Cancelar</button>
+      <button class="btn" id="impPreviewBtn">Pré-visualizar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#impCancel').addEventListener('click', () => back.remove());
+  back.querySelector('#impPreviewBtn').addEventListener('click', () => previewSemana(back));
+}
+
+function previewSemana(back) {
+  const txt = back.querySelector('#impJson').value.trim();
+  const out = back.querySelector('#impPreview');
+  if (!txt) { out.innerHTML = `<div class="card alert-red">Cole o JSON primeiro.</div>`; return; }
+  const cleaned = txt.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  let nextWeek;
+  try { nextWeek = JSON.parse(cleaned); }
+  catch (e) { out.innerHTML = `<div class="card alert-red">JSON inválido: ${escapeHtml(e.message)}</div>`; return; }
+  if (!nextWeek.treinos || !Array.isArray(nextWeek.treinos) || nextWeek.treinos.length === 0) {
+    out.innerHTML = `<div class="card alert-red">JSON sem campo "treinos" válido.</div>`;
+    return;
+  }
+
+  let html = `<hr class="sep">
+    <h3>Semana ${nextWeek.semana || '?'} · ${escapeHtml(nextWeek.fase || '-')}</h3>
+    <div class="muted" style="font-size:12px;margin:4px 0 10px">${escapeHtml(nextWeek.foco_da_semana || '')}</div>`;
+  if (nextWeek.alerta_coach) html += `<div class="card alert-red" style="font-size:13px">${escapeHtml(nextWeek.alerta_coach)}</div>`;
+  for (const t of nextWeek.treinos) {
+    html += `<div class="card">
+      <strong>${escapeHtml(t.dia || '?')} — ${escapeHtml(t.tipo || '?')}</strong>
+      <div class="muted" style="font-size:12px;margin-top:4px">${escapeHtml(t.objetivo || '')}</div>
+      <div class="train-section"><div class="label">Rua · Principal</div><div class="text">${escapeHtml(t.rua?.principal || '-')}</div></div>
+      <div class="train-section"><div class="label">Duração</div><div class="text num">${escapeHtml(t.rua?.duracao_total || '-')}</div></div>
+    </div>`;
+  }
+  if (nextWeek.observacao_coach) html += `<div class="card" style="background:var(--bg2);border:none;font-size:13px">${escapeHtml(nextWeek.observacao_coach)}</div>`;
+  if (Array.isArray(nextWeek.estimativas_provas) && nextWeek.estimativas_provas.length > 0) {
+    const races = getRaces();
+    const norm = (s) => String(s || '').trim().toLowerCase();
+    html += `<div class="card"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:8px">Estimativas de prova</div>`;
+    for (const e of nextWeek.estimativas_provas) {
+      if (!e || !e.nome) continue;
+      const existe = races.some(r => norm(r.name) === norm(e.nome));
+      const tag = existe ? '<span class="badge muted">atualizar</span>' : (e.nova ? '<span class="badge green">nova</span>' : '<span class="badge red">não encontrada</span>');
+      html += `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <div class="row between"><strong>${escapeHtml(e.nome)}</strong>${tag}</div>
+        <div class="muted" style="font-size:12px;margin-top:2px">${escapeHtml(e.tempo_estimado || '-')} · ${escapeHtml(e.pace_estimado || '-')}${e.data ? ` · ${fmtDateBR(e.data)}` : ''}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  out.innerHTML = html;
+
+  back.querySelector('#impJson').style.display = 'none';
+  const lblJson = back.querySelector('label[for=""]') || back.querySelector('.field label');
+  if (lblJson) lblJson.style.display = 'none';
+
+  const oldBtn = back.querySelector('#impPreviewBtn');
+  const newBtn = oldBtn.cloneNode(false);
+  newBtn.id = 'impConfirm';
+  newBtn.className = 'btn';
+  newBtn.textContent = 'Confirmar e salvar';
+  oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+
+  newBtn.addEventListener('click', () => {
+    const temSemanaExistente = !!localStorage.getItem(KEYS.week);
+    const w = getWeek();
+    if (temSemanaExistente) {
+      w.treinos.forEach((t, idx) => {
+        if (t.status === 'Pendente' && isPastPredicted(idx)) t.status = 'Perdido';
+      });
+      setWeek(w);
+      const hist = getHistory(); hist.push(getWeek()); setHistory(hist);
+    }
+    const treinosComStatus = nextWeek.treinos.map(t => ({ ...t, status: 'Pendente', data_prevista: null }));
+    setWeek({
+      semana_atual: nextWeek.semana || (temSemanaExistente ? w.semana_atual + 1 : 1),
+      fase: nextWeek.fase || w.fase || '-',
+      foco_da_semana: nextWeek.foco_da_semana || '',
+      alerta_coach: nextWeek.alerta_coach || null,
+      treinos: treinosComStatus,
+      observacao_coach: nextWeek.observacao_coach || ''
+    });
+
+    const resumo = aplicarEstimativasProvas(nextWeek.estimativas_provas);
+
+    trainModeByIdx = {};
+    back.remove();
+    setTab('semana');
+    let msg = 'Nova semana importada';
+    if (resumo.atualizadas || resumo.criadas) {
+      const partes = [];
+      if (resumo.atualizadas) partes.push(`${resumo.atualizadas} corrida${resumo.atualizadas>1?'s':''} atualizada${resumo.atualizadas>1?'s':''}`);
+      if (resumo.criadas) partes.push(`${resumo.criadas} nova${resumo.criadas>1?'s':''}`);
+      msg += ` · ${partes.join(', ')}`;
+    }
+    toast(msg, 'success');
+  });
+}
+
+function aplicarEstimativasProvas(estimativas) {
+  if (!Array.isArray(estimativas) || estimativas.length === 0) return { atualizadas: 0, criadas: 0 };
+  const races = getRaces();
+  let atualizadas = 0, criadas = 0;
+  const norm = (s) => String(s || '').trim().toLowerCase();
+
+  for (const e of estimativas) {
+    if (!e || !e.nome) continue;
+    const nomeAlvo = norm(e.nome);
+    const idx = races.findIndex(r => norm(r.name) === nomeAlvo);
+
+    if (idx >= 0) {
+      const r = races[idx];
+      if (e.tempo_estimado) r.time_estimate = String(e.tempo_estimado);
+      if (e.pace_estimado) r.estimate_pace = String(e.pace_estimado);
+      if (e.data) r.date = String(e.data);
+      if (e.distancia) r.distance = String(e.distancia);
+      races[idx] = r;
+      atualizadas++;
+    } else if (e.nova === true) {
+      if (!e.data) continue;
+      races.push({
+        id: 'r' + Date.now() + Math.floor(Math.random() * 1000),
+        name: String(e.nome),
+        date: String(e.data),
+        distance: String(e.distancia || '-'),
+        time_estimate: e.tempo_estimado ? String(e.tempo_estimado) : null,
+        estimate_pace: e.pace_estimado ? String(e.pace_estimado) : null,
+      });
+      criadas++;
+    }
+  }
+  if (atualizadas || criadas) setRaces(races);
+  return { atualizadas, criadas };
+}
+
+/* ========== TOAST ========== */
+function toast(msg, kind = '') {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 3200);
+}
+
+/* ========== EXPORT FIT ========== */
+function extrairMinutos(str) {
+  if (!str) return null;
+  const m = String(str).match(/(\d+)\s*min/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+function extrairTotalMinutos(str) {
+  return extrairMinutos(str);
+}
+function extrairPaceRange(str) {
+  if (!str) return { inicio: null, fim: null };
+  const re = /(\d+)['′:](\d{2})["″]?\s*\/?\s*km\s*[-–a]\s*(\d+)['′:](\d{2})["″]?\s*\/?\s*km/i;
+  const m = String(str).match(re);
+  if (m) return { inicio: `${m[1]}:${m[2]}`, fim: `${m[3]}:${m[4]}` };
+  const single = String(str).match(/(\d+)['′:](\d{2})["″]?\s*\/?\s*km/i);
+  if (single) return { inicio: `${single[1]}:${single[2]}`, fim: `${single[1]}:${single[2]}` };
+  return { inicio: null, fim: null };
+}
+function extrairVelocidadeRange(str) {
+  if (!str) return { inicio: null, fim: null };
+  const re = /(\d+[,.]?\d*)\s*[-–]\s*(\d+[,.]?\d*)\s*km\/h/i;
+  const m = String(str).match(re);
+  if (m) return { inicio: parseFloat(m[1].replace(',', '.')), fim: parseFloat(m[2].replace(',', '.')) };
+  const single = String(str).match(/(\d+[,.]?\d*)\s*km\/h/i);
+  if (single) { const v = parseFloat(single[1].replace(',', '.')); return { inicio: v, fim: v }; }
+  return { inicio: null, fim: null };
+}
+
+function montarIntervalos(treino, modo) {
+  const data = treino[modo];
+  if (!data) return [];
+  const totalMin = extrairTotalMinutos(data.duracao_total) || 0;
+  const aqMin = extrairMinutos(data.aquecimento) || 5;
+  const dqMin = extrairMinutos(data.desaquecimento) || 5;
+  let principalMin = extrairMinutos(data.principal);
+  if (!principalMin) principalMin = Math.max(0, totalMin - aqMin - dqMin);
+
+  const intervalos = [];
+  if (modo === 'rua') {
+    intervalos.push({ tipo: 'aquecimento', duracao_min: aqMin, pace_min_km: null, velocidade_kmh: 5.0 });
+    const pr = extrairPaceRange(data.principal);
+    intervalos.push({
+      tipo: 'treino', duracao_min: principalMin,
+      pace_min_km_inicio: pr.inicio, pace_min_km_fim: pr.fim,
+      velocidade_kmh_inicio: null, velocidade_kmh_fim: null,
+    });
+    intervalos.push({ tipo: 'relaxado', duracao_min: dqMin, pace_min_km: null, velocidade_kmh: 5.0 });
+  } else {
+    const aqV = extrairVelocidadeRange(data.aquecimento);
+    const prV = extrairVelocidadeRange(data.principal);
+    const dqV = extrairVelocidadeRange(data.desaquecimento);
+    intervalos.push({ tipo: 'aquecimento', duracao_min: aqMin, pace_min_km: null, velocidade_kmh: aqV.inicio || 5.0 });
+    intervalos.push({
+      tipo: 'treino', duracao_min: principalMin,
+      pace_min_km_inicio: null, pace_min_km_fim: null,
+      velocidade_kmh_inicio: prV.inicio || 7.0, velocidade_kmh_fim: prV.fim || prV.inicio || 7.5,
+    });
+    intervalos.push({ tipo: 'relaxado', duracao_min: dqMin, pace_min_km: null, velocidade_kmh: dqV.inicio || 5.0 });
+  }
+  return intervalos.filter(iv => iv.duracao_min > 0);
+}
+
+/* ========== MODO "EM TREINO" ========== */
+let workoutState = null;
+
+function fmtClock(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function extrairAlvoTexto(str, modo) {
+  if (modo === 'rua') {
+    const r = extrairPaceRange(str);
+    if (r.inicio && r.fim) {
+      const a = r.inicio.replace(':', "'") + '"';
+      const b = r.fim.replace(':', "'") + '"';
+      return r.inicio === r.fim ? `${a}/km` : `${a} – ${b}/km`;
+    }
+  } else {
+    const v = extrairVelocidadeRange(str);
+    if (v.inicio && v.fim) {
+      const a = String(v.inicio).replace('.', ',');
+      const b = String(v.fim).replace('.', ',');
+      return v.inicio === v.fim ? `${a} km/h` : `${a} – ${b} km/h`;
+    }
+  }
+  return null;
+}
+
+function falar(txt) {
+  if (getSettings().mute) return;
+  if (!('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(txt);
+    u.lang = 'pt-BR';
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    u.volume = 1.0;
+    speechSynthesis.speak(u);
+  } catch {}
+}
+
+let audioCtx = null;
+function bip(times = 1, freq = 880) {
+  if (getSettings().mute && times > 0) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    for (let i = 0; i < times; i++) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const t0 = audioCtx.currentTime + i * 0.22;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+      osc.frequency.value = freq;
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.2);
+    }
+  } catch {}
+}
+
+function vibrar(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch {}
+}
+
+async function aquireWakeLock() {
+  try { if ('wakeLock' in navigator) return await navigator.wakeLock.request('screen'); } catch {}
+  return null;
+}
+
+function iniciarTreino(idx) {
+  const w = getWeek();
+  const t = w.treinos[idx];
+  const modo = trainModeByIdx[idx] || 'rua';
+  const data = t[modo];
+  if (!data) { toast('Treino sem dados.', 'error'); return; }
+
+  const aqMin = extrairMinutos(data.aquecimento) || 5;
+  const dqMin = extrairMinutos(data.desaquecimento) || 5;
+  const totalMin = extrairTotalMinutos(data.duracao_total) || 0;
+  let principalMin = extrairMinutos(data.principal);
+  if (!principalMin) principalMin = Math.max(1, totalMin - aqMin - dqMin);
+
+  const fases = [
+    { nome: 'Aquecimento', dur: aqMin * 60, desc: data.aquecimento, alvo: extrairAlvoTexto(data.aquecimento, modo) || 'Caminhada leve', tipo: 'warmup' },
+    { nome: 'Principal',   dur: principalMin * 60, desc: data.principal,   alvo: extrairAlvoTexto(data.principal, modo)   || 'Ritmo do treino', tipo: 'main' },
+    { nome: 'Desaquecimento', dur: dqMin * 60, desc: data.desaquecimento, alvo: extrairAlvoTexto(data.desaquecimento, modo) || 'Caminhada leve', tipo: 'cooldown' },
+  ].filter(f => f.dur > 0);
+
+  abrirWorkoutOverlay(t, idx, modo, fases);
+}
+
+function abrirWorkoutOverlay(treino, treinoIdx, modo, fases) {
+  const overlay = document.createElement('div');
+  overlay.className = 'workout-overlay';
+  overlay.innerHTML = `
+    <button class="mute-btn ${getSettings().mute ? 'muted' : ''}" id="wMute" aria-label="Silenciar">${getSettings().mute ? '🔇' : '🔊'}</button>
+    <div class="meta-row" style="padding-right:48px">
+      <span>${treino.tipo} · ${modo === 'rua' ? 'Rua' : 'Esteira'}</span>
+      <span>Total: <span class="num" id="wTotal">00:00</span> / <span class="num" id="wTotalMax">00:00</span></span>
+    </div>
+    <div class="phase-dots" id="wDots"></div>
+    <div class="phase-label" id="wPhaseLbl">FASE 1 DE ${fases.length}</div>
+    <div class="phase-name" id="wPhaseName">—</div>
+    <div class="timer" id="wTimer">00:00</div>
+    <div class="phase-progress"><div class="fill" id="wPhaseFill" style="width:0%"></div></div>
+    <div class="target-box">
+      <div class="lbl">Pace alvo</div>
+      <div class="val" id="wAlvo">—</div>
+      <div class="sub" id="wDesc">—</div>
+    </div>
+    <div class="controls">
+      <button class="ctrl-btn primary" id="wPause">Pausar</button>
+      <div class="row">
+        <button class="ctrl-btn" id="wSkip">Pular fase</button>
+        <button class="ctrl-btn danger" id="wStop">Encerrar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const totalDur = fases.reduce((a, f) => a + f.dur, 0);
+  document.getElementById('wTotalMax').textContent = fmtClock(totalDur);
+  const dotsEl = document.getElementById('wDots');
+  dotsEl.innerHTML = fases.map(() => `<span class="dot"></span>`).join('');
+
+  workoutState = {
+    overlay, fases, faseIdx: 0,
+    faseStart: Date.now(),
+    workoutStart: Date.now(),
+    pausedAt: null,
+    pausedAcc: 0,
+    pausedFaseAcc: 0,
+    treinoIdx,
+    rafId: null,
+    avisou30: false,
+    encerrado: false,
+    wakeLock: null,
+  };
+  aquireWakeLock().then(wl => { if (workoutState) workoutState.wakeLock = wl; });
+
+  // unlock audio (precisa de gesto do usuário — clicar em "Iniciar treino" já é um)
+  bip(0);
+
+  iniciarFase(0, true);
+  tick();
+
+  document.getElementById('wPause').addEventListener('click', togglePause);
+  document.getElementById('wSkip').addEventListener('click', pularFase);
+  document.getElementById('wStop').addEventListener('click', () => encerrarTreino(true));
+  document.getElementById('wMute').addEventListener('click', () => {
+    const s = getSettings();
+    setSettings({ ...s, mute: !s.mute });
+    const btn = document.getElementById('wMute');
+    btn.classList.toggle('muted', !s.mute);
+    btn.textContent = !s.mute ? '🔇' : '🔊';
+  });
+
+  document.addEventListener('visibilitychange', onVisibility);
+}
+
+function onVisibility() {
+  if (!workoutState) return;
+  if (document.visibilityState === 'visible' && workoutState.wakeLock === null) {
+    aquireWakeLock().then(wl => { if (workoutState) workoutState.wakeLock = wl; });
+  }
+}
+
+function iniciarFase(idx, inicial = false) {
+  const s = workoutState;
+  const f = s.fases[idx];
+  s.faseIdx = idx;
+  s.faseStart = Date.now();
+  s.pausedFaseAcc = 0;
+  s.avisou30 = false;
+
+  const dots = s.overlay.querySelectorAll('.dot');
+  dots.forEach((d, i) => {
+    d.classList.toggle('done', i < idx);
+    d.classList.toggle('current', i === idx);
+  });
+
+  s.overlay.querySelector('#wPhaseLbl').textContent = `FASE ${idx + 1} DE ${s.fases.length}`;
+  const pn = s.overlay.querySelector('#wPhaseName');
+  pn.textContent = f.nome;
+  pn.classList.toggle('principal', f.tipo === 'main');
+  s.overlay.querySelector('#wAlvo').textContent = f.alvo;
+  s.overlay.querySelector('#wDesc').textContent = f.desc;
+
+  if (inicial) {
+    bip(2, 880);
+    vibrar([180, 80, 180]);
+    falar(`Iniciando ${f.nome}. ${f.alvo}. ${Math.round(f.dur / 60)} minutos.`);
+  } else {
+    bip(3, 1000);
+    vibrar([220, 100, 220, 100, 220]);
+    falar(`Próxima fase: ${f.nome}. ${f.alvo}.`);
+  }
+}
+
+function tick() {
+  if (!workoutState || workoutState.encerrado) return;
+  const s = workoutState;
+  if (!s.pausedAt) {
+    const now = Date.now();
+    const faseElapsed = (now - s.faseStart - s.pausedFaseAcc) / 1000;
+    const totalElapsed = (now - s.workoutStart - s.pausedAcc) / 1000;
+    const f = s.fases[s.faseIdx];
+    const restante = f.dur - faseElapsed;
+
+    s.overlay.querySelector('#wTimer').textContent = fmtClock(restante);
+    const timerEl = s.overlay.querySelector('#wTimer');
+    timerEl.classList.toggle('warn', restante > 0 && restante <= 5);
+    s.overlay.querySelector('#wPhaseFill').style.width = Math.min(100, (faseElapsed / f.dur) * 100) + '%';
+    s.overlay.querySelector('#wTotal').textContent = fmtClock(totalElapsed);
+
+    if (!s.avisou30 && restante <= 30 && restante > 25 && s.faseIdx < s.fases.length - 1) {
+      s.avisou30 = true;
+      const prox = s.fases[s.faseIdx + 1];
+      bip(1, 660);
+      vibrar(120);
+      falar(`Faltam 30 segundos. Próxima: ${prox.nome}.`);
+    }
+
+    if (restante <= 0) {
+      if (s.faseIdx < s.fases.length - 1) {
+        iniciarFase(s.faseIdx + 1);
+      } else {
+        return encerrarTreino(false);
+      }
+    }
+  }
+  workoutState.rafId = requestAnimationFrame(tick);
+}
+
+function togglePause() {
+  const s = workoutState;
+  if (!s) return;
+  const btn = s.overlay.querySelector('#wPause');
+  if (s.pausedAt) {
+    const diff = Date.now() - s.pausedAt;
+    s.pausedAcc += diff;
+    s.pausedFaseAcc += diff;
+    s.pausedAt = null;
+    btn.textContent = 'Pausar';
+    falar('Retomado');
+  } else {
+    s.pausedAt = Date.now();
+    btn.textContent = 'Retomar';
+    falar('Pausado');
+  }
+}
+
+function pularFase() {
+  const s = workoutState;
+  if (!s) return;
+  if (s.faseIdx < s.fases.length - 1) {
+    iniciarFase(s.faseIdx + 1);
+  } else {
+    encerrarTreino(false);
+  }
+}
+
+function encerrarTreino(cancelado) {
+  const s = workoutState;
+  if (!s || s.encerrado) return;
+  s.encerrado = true;
+  if (s.rafId) cancelAnimationFrame(s.rafId);
+  if (s.wakeLock) { try { s.wakeLock.release(); } catch {} }
+  document.removeEventListener('visibilitychange', onVisibility);
+
+  if (cancelado) {
+    s.overlay.remove();
+    workoutState = null;
+    toast('Treino interrompido', 'error');
+    return;
+  }
+
+  bip(4, 1200);
+  vibrar([300, 150, 300, 150, 600]);
+  falar('Treino concluído. Bom trabalho!');
+  s.overlay.classList.add('done');
+  s.overlay.querySelector('#wTimer').textContent = '00:00';
+  s.overlay.querySelector('#wPhaseName').textContent = 'Concluído ✓';
+  s.overlay.querySelector('#wAlvo').textContent = '—';
+  s.overlay.querySelector('#wDesc').textContent = 'Pronto para registrar o treino';
+
+  const ctrls = s.overlay.querySelector('.controls');
+  ctrls.innerHTML = `
+    <button class="ctrl-btn primary" id="wRegistrar">Registrar treino agora</button>
+    <button class="ctrl-btn" id="wFechar">Fechar</button>
+  `;
+  const idx = s.treinoIdx;
+  ctrls.querySelector('#wRegistrar').addEventListener('click', () => {
+    s.overlay.remove();
+    workoutState = null;
+    openLogModal(idx);
+  });
+  ctrls.querySelector('#wFechar').addEventListener('click', () => {
+    s.overlay.remove();
+    workoutState = null;
+  });
+}
+
+/* ========== CHANGELOG ========== */
+const APP_VERSION = '2.2';
+const CHANGELOG = [
+  { v: '2.2', date: '2026-06-15', items: [
+    'Migração de hospedagem: Netlify → Cloudflare Pages',
+    'Novo domínio: runcoachdaily.pages.dev',
+    'Deploy automático via GitHub (push na main = site atualizado)',
+  ]},
+  { v: '2.1', date: '2026-06-15', items: [
+    'Correção: botões duplicados ao confirmar importação de semana',
+    'Fluxo de importação agora oculta o JSON e troca o botão para "Confirmar e salvar"',
+  ]},
+  { v: '2.0', date: '2026-06-15', items: [
+    'App renomeado para Run Coach Daily',
+    'Ícone e manifest do PWA atualizados (RCD)',
+  ]},
+  { v: '1.9', date: '2026-06-15', items: [
+    'Toque no card de saudação para editar seu nome a qualquer momento',
+    'Correção da capitalização da data ("15 de junho" em vez de "15 De Junho")',
+    'Frases motivacionais reescritas — mais impactantes e elevadoras',
+  ]},
+  { v: '1.8', date: '2026-06-15', items: [
+    'Saudação personalizada com o seu nome (bom dia/tarde/noite)',
+    'Frase motivacional do dia (muda automaticamente à meia-noite)',
+    'Versículo do dia (muda automaticamente à meia-noite)',
+    'Campo "Seu nome" nas configurações e na tela de boas-vindas',
+    'Refresh automático às 00:00 sem precisar atualizar a página',
+  ]},
+  { v: '1.7', date: '2026-06-15', items: [
+    'Modo multiusuário — cada celular tem dados isolados',
+    'Tela de boas-vindas para novos usuários',
+    'Modal "Ver formato do JSON" com exemplo copiável',
+    'Opção "Apagar todos os dados" nas configurações',
+  ]},
+  { v: '1.6', date: '2026-06-15', items: [
+    'Wheel pickers estilo Zepp para data, pace, distância e tempo',
+    'Entrada de dados mais intuitiva — sem precisar digitar nem teclado',
+    'Padronização visual dos campos de número e data em todos os modais',
+  ]},
+  { v: '1.5', date: '2026-06-15', items: [
+    'Campo "Tempo do treino" no registro (agora as métricas mostram o tempo correto)',
+    'Tela de histórico de versões nas configurações',
+    'Deslizar para o lado alterna entre as abas',
+    'Tocar na aba ativa rola a tela para o topo',
+    'Parser de pace mais tolerante (aceita "8\'" como 8 minutos)',
+  ]},
+  { v: '1.4', date: '2026-06-15', items: [
+    'Aba "Métricas" substitui "Próxima" (somente leitura)',
+    'Importação da próxima semana via JSON colado do coach',
+    'Sincronização automática de status de treino com os logs',
+    'Suporte a "estimativas_provas" no JSON para atualizar/criar corridas',
+  ]},
+  { v: '1.3', date: '2026-06-15', items: [
+    'Editar e excluir treinos no histórico',
+    'Adicionar, editar e remover corridas no calendário',
+    'Tempo e pace estimado por corrida',
+  ]},
+  { v: '1.2', date: '2026-06-15', items: [
+    'Tema escuro com paleta harmônica',
+    'Silenciar áudio (global e dentro do treino)',
+    'Modal "Copiar para Zepp" com campos individuais para criar treino manual',
+  ]},
+  { v: '1.1', date: '2026-06-15', items: [
+    'Modo "Em treino" em tela cheia com cronômetro grande',
+    'Voz + vibração + bip nas transições de fase',
+    'Wake lock mantém a tela acesa durante o treino',
+    'Aviso 30s antes do fim de cada fase',
+  ]},
+  { v: '1.0', date: '2026-06-15', items: [
+    'App inicial com 4 abas (Semana, Histórico, Próxima, Calendário)',
+    'Registro de treinos com pace, distância, sensação, joelho',
+    'PWA com service worker offline',
+    'Barra de progresso do plano (% até a meta)',
+  ]},
+];
+
+const JSON_SCHEMA_EXEMPLO = `{
+  "semana": 1,
+  "fase": "Base",
+  "foco_da_semana": "Adaptação aeróbica",
+  "alerta_coach": null,
+  "observacao_coach": "Mantenha pace controlado, sem forçar",
+  "estimativas_provas": [
+    {
+      "nome": "Minha Corrida 5K",
+      "data": "2026-09-15",
+      "distancia": "5K",
+      "tempo_estimado": "28'00\\"",
+      "pace_estimado": "5'36\\"/km",
+      "nova": true
+    }
+  ],
+  "treinos": [
+    {
+      "dia": "Segunda",
+      "tipo": "Corrida Leve",
+      "objetivo": "Volume aeróbico controlado",
+      "rua": {
+        "aquecimento": "5 min caminhada",
+        "principal": "20 min em pace 7'00\\"/km - 7'30\\"/km",
+        "desaquecimento": "5 min caminhada",
+        "duracao_total": "30 min",
+        "pace_alvo_central_segundos": 435
+      },
+      "esteira": {
+        "aquecimento": "5 min a 5,0 km/h",
+        "principal": "20 min a 8,0-8,5 km/h",
+        "desaquecimento": "5 min a 5,0 km/h",
+        "duracao_total": "30 min"
+      }
+    },
+    { "dia": "Quinta", "tipo": "...", "rua": {}, "esteira": {} },
+    { "dia": "Sábado", "tipo": "...", "rua": {}, "esteira": {} }
+  ]
+}`;
+
+function openSchemaModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Formato do JSON</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:10px">Peça ao coach um JSON neste formato. Toque em "Copiar exemplo" para mandar pro chat.</p>
+    <pre style="background:var(--bg2);padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;font-family:monospace;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-all">${escapeHtml(JSON_SCHEMA_EXEMPLO)}</pre>
+    <div class="muted" style="font-size:12px;margin-top:10px">
+      <strong>Regras:</strong><br>
+      • Dias dos treinos: você escolhe (ex: "Segunda", "Quinta", "Sábado")<br>
+      • <code>pace_alvo_central_segundos</code>: pace em segundos/km (ex: 7'15" = 435)<br>
+      • <code>estimativas_provas</code>: opcional. Match pelo nome para atualizar, ou <code>"nova": true</code> para criar
+    </div>
+    <div class="btn-row">
+      <button class="btn outline" id="schemaClose">Fechar</button>
+      <button class="btn" id="schemaCopy">Copiar exemplo</button>
+    </div>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#schemaClose').addEventListener('click', () => back.remove());
+  back.querySelector('#schemaCopy').addEventListener('click', (e) => copiarTexto(JSON_SCHEMA_EXEMPLO, e.currentTarget));
+}
+
+function resetarApp() {
+  if (!confirm('Apagar TODOS os dados do app (semana, histórico, corridas, métricas)? Esta ação não pode ser desfeita.')) return;
+  if (!confirm('Tem certeza? Os dados serão apagados permanentemente deste celular.')) return;
+  Object.values(KEYS).forEach(k => localStorage.removeItem(k));
+  location.reload();
+}
+
+function openChangelogModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  let html = `<div class="modal">
+    <h2>Histórico de versões</h2>
+    <div class="muted" style="font-size:12px;margin-bottom:14px">Versão atual: <span class="num" style="color:var(--accent);font-weight:700">${APP_VERSION}</span></div>`;
+  for (const c of CHANGELOG) {
+    html += `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+      <div class="row between" style="margin-bottom:6px">
+        <span class="num" style="font-size:15px;font-weight:700;color:var(--accent)">v${c.v}</span>
+        <span class="muted" style="font-size:11px">${fmtDateBR(c.date)}</span>
+      </div>
+      <ul style="padding-left:18px;font-size:13px;line-height:1.5">
+        ${c.items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}
+      </ul>
+    </div>`;
+  }
+  html += `<button class="btn" id="clClose" style="margin-top:14px">Fechar</button></div>`;
+  back.innerHTML = html;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#clClose').addEventListener('click', () => back.remove());
+}
+
+/* ========== SETTINGS ========== */
+const SETTINGS_KEY = 'runcoach_settings';
+function getSettings() {
+  return load(SETTINGS_KEY, { theme: 'light', mute: false, name: '' });
+}
+function setSettings(s) {
+  save(SETTINGS_KEY, s);
+  applyTheme(s.theme);
+}
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0E0E0E' : '#FF5C00');
+}
+
+function openNomeModal() {
+  const s = getSettings();
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Como devemos te chamar?</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:10px">Vamos usar seu nome na saudação diária.</p>
+    <div class="field"><label>Seu nome</label><input type="text" id="nmInput" placeholder="Ex: Pedro" value="${escapeHtml(s.name || '')}" autofocus></div>
+    <div class="btn-row">
+      <button class="btn outline" id="nmCancel">Cancelar</button>
+      <button class="btn" id="nmSave">Salvar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#nmCancel').addEventListener('click', () => back.remove());
+  back.querySelector('#nmSave').addEventListener('click', () => {
+    const novo = back.querySelector('#nmInput').value.trim();
+    setSettings({ ...getSettings(), name: novo });
+    back.remove();
+    render();
+    if (novo) toast(`Olá, ${novo}!`, 'success');
+  });
+  setTimeout(() => back.querySelector('#nmInput').focus(), 50);
+}
+
+function openSettingsModal() {
+  const s = getSettings();
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Configurações</h2>
+    <div class="field"><label>Seu nome</label><input type="text" id="setNome" placeholder="Como devemos te chamar?" value="${escapeHtml(s.name || '')}"></div>
+    <div class="setting-row">
+      <div>
+        <div class="label">Tema escuro</div>
+        <div class="sub">Cores em harmonia com o laranja</div>
+      </div>
+      <div class="switch ${s.theme === 'dark' ? 'on' : ''}" id="swTheme" role="switch" aria-checked="${s.theme === 'dark'}"></div>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="label">Silenciar áudio</div>
+        <div class="sub">Desativa voz e bips. Vibração continua.</div>
+      </div>
+      <div class="switch ${s.mute ? 'on' : ''}" id="swMute" role="switch" aria-checked="${s.mute}"></div>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="label">Histórico de versões</div>
+        <div class="sub">v${APP_VERSION} · veja o que mudou</div>
+      </div>
+      <button class="btn outline" id="btnChangelog" style="width:auto;padding:8px 14px;font-size:13px">Ver</button>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="label" style="color:var(--red)">Apagar todos os dados</div>
+        <div class="sub">Reset completo deste celular</div>
+      </div>
+      <button class="btn outline" id="btnReset" style="width:auto;padding:8px 14px;font-size:13px;color:var(--red);border-color:var(--red)">Apagar</button>
+    </div>
+    <button class="btn" id="setClose" style="margin-top:18px">Fechar</button>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#setClose').addEventListener('click', () => back.remove());
+  back.querySelector('#btnChangelog').addEventListener('click', () => { back.remove(); openChangelogModal(); });
+  back.querySelector('#btnReset').addEventListener('click', () => { back.remove(); resetarApp(); });
+  back.querySelector('#setNome').addEventListener('change', (e) => {
+    const cur = getSettings();
+    setSettings({ ...cur, name: e.target.value.trim() });
+  });
+  back.querySelector('#swTheme').addEventListener('click', () => {
+    const cur = getSettings();
+    const next = { ...cur, theme: cur.theme === 'dark' ? 'light' : 'dark' };
+    setSettings(next);
+    back.querySelector('#swTheme').classList.toggle('on', next.theme === 'dark');
+  });
+  back.querySelector('#swMute').addEventListener('click', () => {
+    const cur = getSettings();
+    const next = { ...cur, mute: !cur.mute };
+    setSettings(next);
+    back.querySelector('#swMute').classList.toggle('on', next.mute);
+  });
+}
+
+/* ========== MODAL: COPIAR PARA ZEPP ========== */
+async function copiarTexto(txt, btn) {
+  try {
+    await navigator.clipboard.writeText(txt);
+    if (btn) {
+      const orig = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '✓ Copiado';
+      setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 1500);
+    }
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copiado';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }
+    } catch {
+      toast('Não foi possível copiar', 'error');
+    }
+  }
+}
+
+function openCopyModal(idx) {
+  const w = getWeek();
+  const t = w.treinos[idx];
+  const modo = trainModeByIdx[idx] || 'rua';
+  const data = t[modo];
+  const aqMin = extrairMinutos(data.aquecimento) || 5;
+  const dqMin = extrairMinutos(data.desaquecimento) || 5;
+  const totalMin = extrairTotalMinutos(data.duracao_total) || 0;
+  let principalMin = extrairMinutos(data.principal);
+  if (!principalMin) principalMin = Math.max(1, totalMin - aqMin - dqMin);
+
+  const alvoPrincipal = extrairAlvoTexto(data.principal, modo) || '';
+  const fmtMin = (n) => `${String(Math.floor(n)).padStart(2,'0')}:00`;
+
+  const linhas = [
+    { lbl: 'Nome', val: t.tipo },
+    { lbl: 'Nota', val: t.objetivo || '' },
+    { lbl: `Aquecimento (${fmtMin(aqMin)})`, val: data.aquecimento },
+    { lbl: `Treino (${fmtMin(principalMin)})`, val: alvoPrincipal ? `Alerta de ritmo: ${alvoPrincipal}` : data.principal },
+    { lbl: `Relaxado (${fmtMin(dqMin)})`, val: data.desaquecimento },
+  ];
+
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Copiar para Zepp</h2>
+    <p class="muted" style="font-size:12px;margin-bottom:12px">Toque em <strong>Copiar</strong> e cole no campo correspondente do app Zepp.</p>
+    ${linhas.map((l, i) => `
+      <div class="copy-row">
+        <div class="copy-content">
+          <div class="copy-label">${l.lbl}</div>
+          <div class="copy-value">${(l.val||'-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        </div>
+        <button class="copy-btn" data-copy-i="${i}">Copiar</button>
+      </div>
+    `).join('')}
+    <button class="btn outline" id="copyClose" style="margin-top:14px">Fechar</button>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#copyClose').addEventListener('click', () => back.remove());
+  back.querySelectorAll('[data-copy-i]').forEach(b => {
+    b.addEventListener('click', () => copiarTexto(linhas[parseInt(b.dataset.copyI)].val || '', b));
+  });
+}
+
+/* ========== MODAL: AJUDA ========== */
+function openHelpModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Modo "Em treino"</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:10px">Como usar durante a corrida:</p>
+    <ol class="help-list">
+      <li>No relógio, inicie uma <strong>Corrida ao Ar Livre</strong> normal (ou na esteira) e deixe rolando</li>
+      <li>No app Run Coach (celular no bolso), toque em <strong>▶ Iniciar treino</strong> no card da sessão</li>
+      <li>O cronômetro grande mostra o tempo restante da fase atual</li>
+      <li>O <strong>pace alvo</strong> da fase aparece em destaque</li>
+      <li>Em cada transição: <strong>vibração + bip + voz</strong> anunciam a próxima fase</li>
+      <li>30 segundos antes do fim da fase, há um aviso prévio</li>
+    </ol>
+    <hr class="sep">
+    <p class="muted" style="font-size:12px"><strong>Dica:</strong> mantenha o som do celular ligado e o fone/alto-falante audível. A tela fica acesa durante o treino (wake lock). Ao terminar, abre direto a tela de registro.</p>
+    <button class="btn" id="helpClose" style="margin-top:14px">Entendi</button>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#helpClose').addEventListener('click', () => back.remove());
+}
+
+/* ========== FRASES E VERSÍCULOS ========== */
+const FRASES_MOTIVACIONAIS = [
+  "Você é mais forte do que qualquer cansaço.",
+  "A próxima passada já é uma vitória.",
+  "Quem treina hoje colhe vida amanhã.",
+  "Cada gota de suor é uma promessa cumprida.",
+  "Hoje você prova ao seu eu antigo do que é capaz.",
+  "Nada que vale a pena é fácil — e nada fácil te transforma.",
+  "Sua história mais bonita começa neste passo.",
+  "Você está construindo o atleta que sonhou ser.",
+  "A linha de chegada nasce na decisão de começar.",
+  "Pés que se movem mudam destinos.",
+  "Excelência é repetir o difícil até virar comum.",
+  "Cada km registrado é uma derrota do desânimo.",
+  "Você não desiste. Você ajusta e segue.",
+  "O melhor de você ainda está por vir.",
+  "Treinar é dizer 'sim' à versão que você quer ser.",
+  "Quem mantém o ritmo alcança o impossível.",
+  "Coragem é decidir antes do corpo querer.",
+  "Sua mente é o motor; seus pés só obedecem.",
+  "Hoje você plantou. Amanhã você corre.",
+  "Você não está cansado — você está crescendo.",
+  "Foco no próximo km, não na linha de chegada.",
+  "Acredite no plano; ele já viu mais longe que você.",
+  "A constância tem rosto: o seu, batendo na porta todo dia.",
+  "Nada apaga quem se levanta de novo.",
+  "Você é o tipo de pessoa que termina o que começa.",
+  "Hoje é o dia que seu eu futuro vai agradecer.",
+  "Disciplina hoje, liberdade amanhã.",
+  "O impossível recua quando você avança.",
+  "Você venceu o sofá. O resto é detalhe.",
+  "Sua versão mais forte está logo depois do desconforto.",
+];
+
+const VERSICULOS = [
+  { texto: "Tudo posso naquele que me fortalece.", ref: "Filipenses 4:13" },
+  { texto: "O Senhor é a minha força e o meu escudo; nele confiou o meu coração.", ref: "Salmos 28:7" },
+  { texto: "Os que esperam no Senhor renovam as suas forças, correm e não se cansam.", ref: "Isaías 40:31" },
+  { texto: "Seja forte e corajoso! Não se apavore, porque o Senhor seu Deus estará com você.", ref: "Josué 1:9" },
+  { texto: "Combati o bom combate, completei a corrida, guardei a fé.", ref: "2 Timóteo 4:7" },
+  { texto: "Tudo tem o seu tempo determinado, e há tempo para todo propósito.", ref: "Eclesiastes 3:1" },
+  { texto: "Lancem sobre Ele toda a sua ansiedade, porque Ele tem cuidado de vocês.", ref: "1 Pedro 5:7" },
+  { texto: "Confie no Senhor de todo o seu coração e não se apoie em seu próprio entendimento.", ref: "Provérbios 3:5" },
+  { texto: "O Senhor é o meu pastor; de nada terei falta.", ref: "Salmos 23:1" },
+  { texto: "Se Deus é por nós, quem será contra nós?", ref: "Romanos 8:31" },
+  { texto: "Alegrem-se na esperança, sejam pacientes na tribulação, perseverem na oração.", ref: "Romanos 12:12" },
+  { texto: "Não tema, pois estou com você; não se apavore, pois sou o seu Deus.", ref: "Isaías 41:10" },
+  { texto: "Aquietem-se e saibam que eu sou Deus.", ref: "Salmos 46:10" },
+  { texto: "Sejam fortes, e tenha coragem o seu coração, todos os que esperam no Senhor.", ref: "Salmos 31:24" },
+  { texto: "A alegria do Senhor é a sua força.", ref: "Neemias 8:10" },
+  { texto: "Façam tudo para a glória de Deus.", ref: "1 Coríntios 10:31" },
+  { texto: "Ele dá força ao cansado e multiplica as forças do que não tem nenhum vigor.", ref: "Isaías 40:29" },
+  { texto: "Que a perseverança complete a sua obra, a fim de que vocês sejam maduros.", ref: "Tiago 1:4" },
+  { texto: "Corramos com perseverança a corrida que nos é proposta.", ref: "Hebreus 12:1" },
+  { texto: "Deem graças em todas as circunstâncias, pois esta é a vontade de Deus.", ref: "1 Tessalonicenses 5:18" },
+  { texto: "O coração alegre é bom remédio, mas o espírito abatido seca os ossos.", ref: "Provérbios 17:22" },
+  { texto: "Lâmpada para os meus pés é a tua palavra, e luz para o meu caminho.", ref: "Salmos 119:105" },
+  { texto: "O Senhor é a minha luz e a minha salvação; de quem terei temor?", ref: "Salmos 27:1" },
+  { texto: "Deixo-lhes a paz; a minha paz lhes dou.", ref: "João 14:27" },
+  { texto: "Não por força nem por poder, mas pelo meu Espírito, diz o Senhor dos Exércitos.", ref: "Zacarias 4:6" },
+  { texto: "Aqueles que semeiam com lágrimas com cantos de alegria colherão.", ref: "Salmos 126:5" },
+  { texto: "Busquem, pois, em primeiro lugar o Reino de Deus e a sua justiça.", ref: "Mateus 6:33" },
+  { texto: "Sirvam ao Senhor com alegria; venham diante dele com cânticos alegres.", ref: "Salmos 100:2" },
+  { texto: "Bem-aventurados os que têm fome e sede de justiça, pois serão satisfeitos.", ref: "Mateus 5:6" },
+  { texto: "Encha-se o meu coração das tuas palavras, para eu poder responder.", ref: "Provérbios 22:17-18" },
+];
+
+function dayOfYear(d) {
+  d = d || new Date();
+  const start = new Date(d.getFullYear(), 0, 0);
+  return Math.floor((d - start) / 86400000);
+}
+function fraseDoDia() { return FRASES_MOTIVACIONAIS[dayOfYear() % FRASES_MOTIVACIONAIS.length]; }
+function versiculoDoDia() { return VERSICULOS[dayOfYear() % VERSICULOS.length]; }
+function saudacao() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+function dataExtensa() {
+  const d = new Date();
+  const s = d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+let dailyRefreshTimer = null;
+function scheduleDailyRefresh() {
+  if (dailyRefreshTimer) clearTimeout(dailyRefreshTimer);
+  const now = new Date();
+  const next = new Date(now);
+  next.setDate(now.getDate() + 1);
+  next.setHours(0, 0, 0, 0);
+  const ms = next - now + 2000;
+  dailyRefreshTimer = setTimeout(() => {
+    render();
+    scheduleDailyRefresh();
+  }, ms);
+}
+
+/* ========== WHEEL PICKER ========== */
+function openPicker({ title, subtitle, columns, separators = [], onConfirm }) {
+  const back = document.createElement('div');
+  back.className = 'picker-backdrop';
+  let colsHtml = '';
+  columns.forEach((c, i) => {
+    if (i > 0) colsHtml += `<div class="picker-sep">${separators[i-1] ?? ''}</div>`;
+    colsHtml += `<div class="picker-col" data-col="${i}">
+      <div class="picker-col-pad"></div>
+      ${c.items.map(it => `<div class="picker-item">${escapeHtml(String(it))}</div>`).join('')}
+      <div class="picker-col-pad"></div>
+    </div>`;
+  });
+  back.innerHTML = `<div class="picker-sheet">
+    <div class="picker-title">${escapeHtml(title || '')}</div>
+    ${subtitle ? `<div class="picker-sub">${escapeHtml(subtitle)}</div>` : ''}
+    <div class="picker-cols">${colsHtml}</div>
+    <div class="picker-actions">
+      <button class="btn" id="pkOk">OK</button>
+      <button class="btn outline" id="pkCancel">Cancelar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(back);
+
+  const colEls = back.querySelectorAll('.picker-col');
+  const ITEM_H = 40;
+
+  function updateSelected(col) {
+    const idx = Math.round(col.scrollTop / ITEM_H);
+    col.querySelectorAll('.picker-item').forEach((it, i) => {
+      it.classList.toggle('selected', i === idx);
+    });
+  }
+
+  colEls.forEach((col, i) => {
+    const initial = Math.max(0, Math.min((columns[i].items.length - 1), columns[i].initial || 0));
+    requestAnimationFrame(() => {
+      col.scrollTop = initial * ITEM_H;
+      updateSelected(col);
+    });
+    let t;
+    col.addEventListener('scroll', () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        const idx = Math.round(col.scrollTop / ITEM_H);
+        col.scrollTop = idx * ITEM_H;
+        updateSelected(col);
+      }, 80);
+    });
+    col.addEventListener('click', (e) => {
+      const item = e.target.closest('.picker-item');
+      if (!item) return;
+      const items = Array.from(col.querySelectorAll('.picker-item'));
+      const idx = items.indexOf(item);
+      if (idx >= 0) col.scrollTop = idx * ITEM_H;
+    });
+  });
+
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#pkCancel').addEventListener('click', () => back.remove());
+  back.querySelector('#pkOk').addEventListener('click', () => {
+    const selected = Array.from(colEls).map(col => Math.round(col.scrollTop / ITEM_H));
+    back.remove();
+    onConfirm(selected);
+  });
+}
+
+const MESES_PT = ['JAN.','FEV.','MAR.','ABR.','MAI.','JUN.','JUL.','AGO.','SET.','OUT.','NOV.','DEZ.'];
+
+function openDatePicker(isoDate, onConfirm) {
+  const base = isoDate ? new Date(isoDate + 'T12:00:00') : new Date();
+  const curY = base.getFullYear();
+  const years = [];
+  for (let y = curY - 3; y <= curY + 5; y++) years.push(y);
+  const days = [];
+  for (let d = 1; d <= 31; d++) days.push(String(d).padStart(2, '0'));
+  openPicker({
+    title: 'Data',
+    columns: [
+      { items: days, initial: base.getDate() - 1 },
+      { items: MESES_PT, initial: base.getMonth() },
+      { items: years.map(String), initial: years.indexOf(curY) },
+    ],
+    onConfirm: ([di, mi, yi]) => {
+      const yr = years[yi];
+      const dt = String(di + 1).padStart(2, '0');
+      const mo = String(mi + 1).padStart(2, '0');
+      onConfirm(`${yr}-${mo}-${dt}`);
+    }
+  });
+}
+
+function openPacePicker(currentSec, onConfirm) {
+  const mins = []; for (let m = 3; m <= 12; m++) mins.push(String(m));
+  const secs = []; for (let s = 0; s < 60; s++) secs.push(String(s).padStart(2, '0'));
+  let m0 = 7, s0 = 0;
+  if (currentSec && currentSec > 0) { m0 = Math.floor(currentSec / 60); s0 = currentSec % 60; }
+  openPicker({
+    title: 'Pace por km',
+    columns: [
+      { items: mins, initial: Math.max(0, mins.indexOf(String(m0))) },
+      { items: secs, initial: s0 },
+    ],
+    separators: ["'"],
+    onConfirm: ([mi, si]) => {
+      const m = parseInt(mins[mi]), s = parseInt(secs[si]);
+      onConfirm({ seconds: m * 60 + s, text: `${m}'${String(s).padStart(2,'0')}"` });
+    }
+  });
+}
+
+function openTempoPicker(currentSec, onConfirm) {
+  const hours = []; for (let h = 0; h <= 5; h++) hours.push(String(h));
+  const mins = []; for (let m = 0; m < 60; m++) mins.push(String(m).padStart(2, '0'));
+  const secs = []; for (let s = 0; s < 60; s++) secs.push(String(s).padStart(2, '0'));
+  let h0 = 0, m0 = 30, s0 = 0;
+  if (currentSec && currentSec > 0) {
+    h0 = Math.floor(currentSec / 3600);
+    m0 = Math.floor((currentSec % 3600) / 60);
+    s0 = currentSec % 60;
+  }
+  openPicker({
+    title: 'Tempo (h : min : seg)',
+    columns: [
+      { items: hours, initial: h0 },
+      { items: mins, initial: m0 },
+      { items: secs, initial: s0 },
+    ],
+    separators: [':', ':'],
+    onConfirm: ([hi, mi, si]) => {
+      const h = parseInt(hours[hi]), m = parseInt(mins[mi]), s = parseInt(secs[si]);
+      const total = h * 3600 + m * 60 + s;
+      onConfirm({ seconds: total, text: fmtTempoInput(total) });
+    }
+  });
+}
+
+function openDistPicker(currentKm, onConfirm) {
+  const ints = []; for (let i = 0; i <= 50; i++) ints.push(String(i));
+  const decs = []; for (let d = 0; d < 100; d++) decs.push(String(d).padStart(2, '0'));
+  let i0 = 0, d0 = 0;
+  if (currentKm) { i0 = Math.floor(currentKm); d0 = Math.round((currentKm - i0) * 100); }
+  openPicker({
+    title: 'Distância (km)',
+    columns: [
+      { items: ints, initial: i0 },
+      { items: decs, initial: d0 },
+    ],
+    separators: ['.'],
+    onConfirm: ([ii, di]) => {
+      const km = parseInt(ints[ii]) + parseInt(decs[di]) / 100;
+      onConfirm(km);
+    }
+  });
+}
+
+function pickerInputHtml(id, value, placeholder) {
+  return `<div class="picker-input" id="${id}" data-value="${escapeHtml(value || '')}">
+    <span class="${value ? '' : 'ph'}" data-display>${escapeHtml(value || placeholder || '—')}</span>
+    <span class="chev">▾</span>
+  </div>`;
+}
+function pickerInputSet(el, value, display) {
+  el.dataset.value = value || '';
+  const d = el.querySelector('[data-display]');
+  if (value) { d.textContent = display || value; d.classList.remove('ph'); }
+  else { d.textContent = el.dataset.placeholder || '—'; d.classList.add('ph'); }
+}
+
+/* ========== SYNC: status de treinos vs logs ========== */
+function sincronizarStatusTreinos() {
+  const logs = getLogs();
+  const w = getWeek();
+  let mudou = false;
+  w.treinos.forEach((t, idx) => {
+    if (t.status === 'Concluído') {
+      const tem = logs.some(l => l.semana === w.semana_atual && l.train_idx === idx);
+      if (!tem) {
+        t.status = 'Pendente';
+        delete t.data_efetiva;
+        mudou = true;
+      }
+    }
+  });
+  if (mudou) setWeek(w);
+
+  const hist = getHistory();
+  let mudouHist = false;
+  hist.forEach(sw => {
+    (sw.treinos || []).forEach((t, idx) => {
+      if (t.status === 'Concluído') {
+        const tem = logs.some(l => l.semana === sw.semana_atual && l.train_idx === idx);
+        if (!tem) {
+          t.status = 'Pendente';
+          delete t.data_efetiva;
+          mudouHist = true;
+        }
+      }
+    });
+  });
+  if (mudouHist) setHistory(hist);
+}
+
+/* ========== INIT ========== */
+applyTheme(getSettings().theme);
+sincronizarStatusTreinos();
+render();
+scheduleDailyRefresh();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
