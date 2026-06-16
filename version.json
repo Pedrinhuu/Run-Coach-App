@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.16-1236",
+  "versao": "2026.06.16-1321",
   "data": "2026-06-16",
-  "novidades": ["fix: sininho faltando no header da tela principal"]
+  "novidades": ["v2.6: Modo intervalado no treino (ciclos com sub-fases)"]
 }
