@@ -154,6 +154,11 @@
   .workout-overlay .phase-dots .dot{flex:1;max-width:60px;height:4px;background:rgba(255,255,255,.15);border-radius:2px}
   .workout-overlay .phase-dots .dot.done{background:#666}
   .workout-overlay .phase-dots .dot.current{background:var(--accent)}
+  .workout-overlay .interval-info{text-align:center;margin:4px 0}
+  .workout-overlay .interval-info .int-cycle{font-size:13px;font-weight:600;letter-spacing:1px;color:#999}
+  .workout-overlay .interval-info .int-cycle.last{color:var(--accent)}
+  .workout-overlay .interval-info .int-phase{font-size:11px;color:#666;margin-top:2px}
+  .workout-overlay .interval-info .int-total{font-size:12px;color:#888;margin-top:6px;font-variant-numeric:tabular-nums}
   .workout-overlay .controls{margin-top:auto;display:flex;flex-direction:column;gap:10px}
   .workout-overlay .controls .row{display:flex;gap:10px}
   .workout-overlay .ctrl-btn{flex:1;padding:14px;border-radius:8px;font-weight:700;font-size:14px;background:rgba(255,255,255,.1);color:#fff;border:none}
@@ -549,6 +554,11 @@ function retomarTreino() {
     <div class="phase-label" id="wPhaseLbl">FASE ${saved.faseIdx + 1} DE ${fases.length}</div>
     <div class="phase-name" id="wPhaseName">—</div>
     <div class="timer" id="wTimer">00:00</div>
+    <div class="interval-info" id="wIntInfo" style="display:none">
+      <div class="int-cycle" id="wIntCycle"></div>
+      <div class="int-phase" id="wIntPhase"></div>
+      <div class="int-total" id="wIntTotal"></div>
+    </div>
     <div class="phase-progress"><div class="fill" id="wPhaseFill" style="width:0%"></div></div>
     <div class="target-box">
       <div class="lbl">Pace alvo</div>
@@ -570,6 +580,15 @@ function retomarTreino() {
   const dotsEl = document.getElementById('wDots');
   dotsEl.innerHTML = fases.map(() => `<span class="dot"></span>`).join('');
 
+  const restoredIntv = saved.intv ? {
+    config: saved.intv.config,
+    ciclo: saved.intv.ciclo,
+    subFase: saved.intv.subFase,
+    subFaseStart: saved.intv.subFaseStart,
+    subFasePausedAcc: saved.intv.subFasePausedAcc,
+    avisou5: saved.intv.avisou5,
+  } : null;
+
   workoutState = {
     overlay, fases,
     faseIdx: saved.faseIdx,
@@ -585,16 +604,23 @@ function retomarTreino() {
     wakeLock: null,
     modo: saved.modo,
     treinoTipo: saved.treinoTipo,
+    intv: restoredIntv,
   };
   aquireWakeLock().then(wl => { if (workoutState) workoutState.wakeLock = wl; });
 
   const f = fases[saved.faseIdx];
   const dots = overlay.querySelectorAll('.dot');
   dots.forEach((d, i) => { d.classList.toggle('done', i < saved.faseIdx); d.classList.toggle('current', i === saved.faseIdx); });
-  overlay.querySelector('#wPhaseName').textContent = f.nome;
-  overlay.querySelector('#wPhaseName').classList.toggle('principal', f.tipo === 'main');
-  overlay.querySelector('#wAlvo').textContent = f.alvo;
-  overlay.querySelector('#wDesc').textContent = f.desc;
+
+  if (f.tipo === 'main' && restoredIntv) {
+    overlay.querySelector('#wIntInfo').style.display = 'block';
+    atualizarIntervaloUI(workoutState);
+  } else {
+    overlay.querySelector('#wPhaseName').textContent = f.nome;
+    overlay.querySelector('#wPhaseName').classList.toggle('principal', f.tipo === 'main');
+    overlay.querySelector('#wAlvo').textContent = f.alvo;
+    overlay.querySelector('#wDesc').textContent = f.desc;
+  }
 
   bip(1, 660);
   falar('Treino retomado.');
@@ -1718,16 +1744,23 @@ function iniciarTreino(idx) {
   let principalMin = extrairMinutos(data.principal);
   if (!principalMin) principalMin = Math.max(1, totalMin - aqMin - dqMin);
 
+  const intConfig = data.intervalos || null;
+  let mainDur = principalMin * 60;
+  if (intConfig && intConfig.ciclos && Array.isArray(intConfig.fases) && intConfig.fases.length > 0) {
+    const cycleDur = intConfig.fases.reduce((a, f) => a + (f.duracao_segundos || 0), 0);
+    mainDur = intConfig.ciclos * cycleDur;
+  }
+
   const fases = [
     { nome: 'Aquecimento', dur: aqMin * 60, desc: data.aquecimento, alvo: extrairAlvoTexto(data.aquecimento, modo) || 'Caminhada leve', tipo: 'warmup' },
-    { nome: 'Principal',   dur: principalMin * 60, desc: data.principal,   alvo: extrairAlvoTexto(data.principal, modo)   || 'Ritmo do treino', tipo: 'main' },
+    { nome: 'Principal',   dur: mainDur, desc: data.principal,   alvo: extrairAlvoTexto(data.principal, modo)   || 'Ritmo do treino', tipo: 'main' },
     { nome: 'Desaquecimento', dur: dqMin * 60, desc: data.desaquecimento, alvo: extrairAlvoTexto(data.desaquecimento, modo) || 'Caminhada leve', tipo: 'cooldown' },
   ].filter(f => f.dur > 0);
 
-  abrirWorkoutOverlay(t, idx, modo, fases);
+  abrirWorkoutOverlay(t, idx, modo, fases, intConfig);
 }
 
-function abrirWorkoutOverlay(treino, treinoIdx, modo, fases) {
+function abrirWorkoutOverlay(treino, treinoIdx, modo, fases, intConfig) {
   const overlay = document.createElement('div');
   overlay.className = 'workout-overlay';
   overlay.innerHTML = `
@@ -1740,6 +1773,11 @@ function abrirWorkoutOverlay(treino, treinoIdx, modo, fases) {
     <div class="phase-label" id="wPhaseLbl">FASE 1 DE ${fases.length}</div>
     <div class="phase-name" id="wPhaseName">—</div>
     <div class="timer" id="wTimer">00:00</div>
+    <div class="interval-info" id="wIntInfo" style="display:none">
+      <div class="int-cycle" id="wIntCycle"></div>
+      <div class="int-phase" id="wIntPhase"></div>
+      <div class="int-total" id="wIntTotal"></div>
+    </div>
     <div class="phase-progress"><div class="fill" id="wPhaseFill" style="width:0%"></div></div>
     <div class="target-box">
       <div class="lbl">Pace alvo</div>
@@ -1761,6 +1799,10 @@ function abrirWorkoutOverlay(treino, treinoIdx, modo, fases) {
   const dotsEl = document.getElementById('wDots');
   dotsEl.innerHTML = fases.map(() => `<span class="dot"></span>`).join('');
 
+  const intv = intConfig && intConfig.ciclos && Array.isArray(intConfig.fases) && intConfig.fases.length > 0
+    ? { config: intConfig, ciclo: 0, subFase: 0, subFaseStart: Date.now(), subFasePausedAcc: 0, avisou5: false }
+    : null;
+
   workoutState = {
     overlay, fases, faseIdx: 0,
     faseStart: Date.now(),
@@ -1775,6 +1817,7 @@ function abrirWorkoutOverlay(treino, treinoIdx, modo, fases) {
     wakeLock: null,
     modo,
     treinoTipo: treino.tipo,
+    intv,
   };
   aquireWakeLock().then(wl => { if (workoutState) workoutState.wakeLock = wl; });
 
@@ -1815,6 +1858,14 @@ function saveActiveWorkout() {
     fasesConfig: s.fases.map(f => ({ nome: f.nome, dur: f.dur, desc: f.desc, alvo: f.alvo, tipo: f.tipo })),
     modo: s.modo,
     treinoTipo: s.treinoTipo,
+    intv: s.intv ? {
+      config: s.intv.config,
+      ciclo: s.intv.ciclo,
+      subFase: s.intv.subFase,
+      subFaseStart: s.intv.subFaseStart,
+      subFasePausedAcc: s.intv.subFasePausedAcc,
+      avisou5: s.intv.avisou5,
+    } : null,
   };
   localStorage.setItem(ACTIVE_WORKOUT_KEY, JSON.stringify(data));
 }
@@ -1859,16 +1910,88 @@ function iniciarFase(idx, inicial = false) {
   s.overlay.querySelector('#wAlvo').textContent = f.alvo;
   s.overlay.querySelector('#wDesc').textContent = f.desc;
 
+  if (f.tipo === 'main' && s.intv) {
+    s.intv.ciclo = 0;
+    s.intv.subFase = 0;
+    s.intv.subFaseStart = Date.now();
+    s.intv.subFasePausedAcc = 0;
+    s.intv.avisou5 = false;
+    s.overlay.querySelector('#wIntInfo').style.display = 'block';
+    atualizarIntervaloUI(s);
+  } else {
+    s.overlay.querySelector('#wIntInfo').style.display = 'none';
+  }
+
   if (inicial) {
     bip(2, 880);
     vibrar([180, 80, 180]);
-    falar(`Iniciando ${f.nome}. ${f.alvo}. ${Math.round(f.dur / 60)} minutos.`);
+    if (f.tipo === 'main' && s.intv) {
+      const sf = s.intv.config.fases[0];
+      falar(`Iniciando intervalos. ${sf.nome}. ${sf.referencia}. ${s.intv.config.ciclos} ciclos.`);
+    } else {
+      falar(`Iniciando ${f.nome}. ${f.alvo}. ${Math.round(f.dur / 60)} minutos.`);
+    }
   } else {
     bip(3, 1000);
     vibrar([220, 100, 220, 100, 220]);
-    falar(`Próxima fase: ${f.nome}. ${f.alvo}.`);
+    if (f.tipo === 'main' && s.intv) {
+      const sf = s.intv.config.fases[0];
+      falar(`Próxima fase: Intervalos. ${sf.nome}. ${sf.referencia}.`);
+    } else {
+      falar(`Próxima fase: ${f.nome}. ${f.alvo}.`);
+    }
   }
   saveActiveWorkout();
+}
+
+function atualizarIntervaloUI(s) {
+  const iv = s.intv;
+  const cfg = iv.config;
+  const sf = cfg.fases[iv.subFase];
+  const isLast = iv.ciclo === cfg.ciclos - 1;
+  const isPenultimate = iv.ciclo === cfg.ciclos - 2;
+
+  const pn = s.overlay.querySelector('#wPhaseName');
+  pn.textContent = sf.nome;
+  pn.classList.add('principal');
+  s.overlay.querySelector('#wAlvo').textContent = sf.referencia || '—';
+  s.overlay.querySelector('#wDesc').textContent = `Fase ${iv.subFase + 1} de ${cfg.fases.length}`;
+
+  const cycleEl = s.overlay.querySelector('#wIntCycle');
+  cycleEl.textContent = isLast ? `ÚLTIMO CICLO (${iv.ciclo + 1}/${cfg.ciclos})` :
+    isPenultimate ? `Ciclo ${iv.ciclo + 1} de ${cfg.ciclos} · Último ciclo a seguir` :
+    `Ciclo ${iv.ciclo + 1} de ${cfg.ciclos}`;
+  cycleEl.classList.toggle('last', isLast);
+
+  s.overlay.querySelector('#wIntPhase').textContent = `${sf.nome} · ${fmtClock(sf.duracao_segundos)}`;
+}
+
+function avancarSubFase(s) {
+  const iv = s.intv;
+  const cfg = iv.config;
+  const nextSub = iv.subFase + 1;
+
+  if (nextSub < cfg.fases.length) {
+    iv.subFase = nextSub;
+  } else {
+    iv.ciclo++;
+    if (iv.ciclo >= cfg.ciclos) {
+      return false;
+    }
+    iv.subFase = 0;
+  }
+  iv.subFaseStart = Date.now();
+  iv.subFasePausedAcc = 0;
+  iv.avisou5 = false;
+
+  const sf = cfg.fases[iv.subFase];
+  bip(2, 1000);
+  vibrar([180, 80, 180]);
+  falar(`${sf.nome}. ${sf.referencia}. Ciclo ${iv.ciclo + 1}.`);
+
+  atualizarIntervaloUI(s);
+  saveActiveWorkout();
+  return true;
 }
 
 function tick() {
@@ -1876,30 +1999,62 @@ function tick() {
   const s = workoutState;
   if (!s.pausedAt) {
     const now = Date.now();
-    const faseElapsed = (now - s.faseStart - s.pausedFaseAcc) / 1000;
     const totalElapsed = (now - s.workoutStart - s.pausedAcc) / 1000;
     const f = s.fases[s.faseIdx];
-    const restante = f.dur - faseElapsed;
 
-    s.overlay.querySelector('#wTimer').textContent = fmtClock(restante);
-    const timerEl = s.overlay.querySelector('#wTimer');
-    timerEl.classList.toggle('warn', restante > 0 && restante <= 5);
-    s.overlay.querySelector('#wPhaseFill').style.width = Math.min(100, (faseElapsed / f.dur) * 100) + '%';
-    s.overlay.querySelector('#wTotal').textContent = fmtClock(totalElapsed);
+    if (f.tipo === 'main' && s.intv) {
+      const iv = s.intv;
+      const sf = iv.config.fases[iv.subFase];
+      const subElapsed = (now - iv.subFaseStart - iv.subFasePausedAcc) / 1000;
+      const subRestante = sf.duracao_segundos - subElapsed;
+      const faseElapsed = (now - s.faseStart - s.pausedFaseAcc) / 1000;
 
-    if (!s.avisou30 && restante <= 30 && restante > 25 && s.faseIdx < s.fases.length - 1) {
-      s.avisou30 = true;
-      const prox = s.fases[s.faseIdx + 1];
-      bip(1, 660);
-      vibrar(120);
-      falar(`Faltam 30 segundos. Próxima: ${prox.nome}.`);
-    }
+      s.overlay.querySelector('#wTimer').textContent = fmtClock(subRestante);
+      const timerEl = s.overlay.querySelector('#wTimer');
+      timerEl.classList.toggle('warn', subRestante > 0 && subRestante <= 5);
+      s.overlay.querySelector('#wPhaseFill').style.width = Math.min(100, (faseElapsed / f.dur) * 100) + '%';
+      s.overlay.querySelector('#wTotal').textContent = fmtClock(totalElapsed);
+      s.overlay.querySelector('#wIntTotal').textContent = `Total principal: ${fmtClock(faseElapsed)} / ${fmtClock(f.dur)}`;
 
-    if (restante <= 0) {
-      if (s.faseIdx < s.fases.length - 1) {
-        iniciarFase(s.faseIdx + 1);
-      } else {
-        return encerrarTreino(false);
+      if (!iv.avisou5 && subRestante <= 5 && subRestante > 3) {
+        iv.avisou5 = true;
+        bip(1, 660);
+        vibrar(120);
+      }
+
+      if (subRestante <= 0) {
+        if (!avancarSubFase(s)) {
+          if (s.faseIdx < s.fases.length - 1) {
+            iniciarFase(s.faseIdx + 1);
+          } else {
+            return encerrarTreino(false);
+          }
+        }
+      }
+    } else {
+      const faseElapsed = (now - s.faseStart - s.pausedFaseAcc) / 1000;
+      const restante = f.dur - faseElapsed;
+
+      s.overlay.querySelector('#wTimer').textContent = fmtClock(restante);
+      const timerEl = s.overlay.querySelector('#wTimer');
+      timerEl.classList.toggle('warn', restante > 0 && restante <= 5);
+      s.overlay.querySelector('#wPhaseFill').style.width = Math.min(100, (faseElapsed / f.dur) * 100) + '%';
+      s.overlay.querySelector('#wTotal').textContent = fmtClock(totalElapsed);
+
+      if (!s.avisou30 && restante <= 30 && restante > 25 && s.faseIdx < s.fases.length - 1) {
+        s.avisou30 = true;
+        const prox = s.fases[s.faseIdx + 1];
+        bip(1, 660);
+        vibrar(120);
+        falar(`Faltam 30 segundos. Próxima: ${prox.nome}.`);
+      }
+
+      if (restante <= 0) {
+        if (s.faseIdx < s.fases.length - 1) {
+          iniciarFase(s.faseIdx + 1);
+        } else {
+          return encerrarTreino(false);
+        }
       }
     }
   }
@@ -1914,6 +2069,7 @@ function togglePause() {
     const diff = Date.now() - s.pausedAt;
     s.pausedAcc += diff;
     s.pausedFaseAcc += diff;
+    if (s.intv) s.intv.subFasePausedAcc += diff;
     s.pausedAt = null;
     btn.textContent = 'Pausar';
     falar('Retomado');
@@ -1928,6 +2084,17 @@ function togglePause() {
 function pularFase() {
   const s = workoutState;
   if (!s) return;
+  const f = s.fases[s.faseIdx];
+  if (f.tipo === 'main' && s.intv) {
+    if (!avancarSubFase(s)) {
+      if (s.faseIdx < s.fases.length - 1) {
+        iniciarFase(s.faseIdx + 1);
+      } else {
+        encerrarTreino(false);
+      }
+    }
+    return;
+  }
   if (s.faseIdx < s.fases.length - 1) {
     iniciarFase(s.faseIdx + 1);
   } else {
@@ -1978,8 +2145,16 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '2.5';
+const APP_VERSION = '2.6';
 const CHANGELOG = [
+  { v: '2.6', date: '2026-06-16', items: [
+    'Modo intervalado no treino: ciclos com fases alternadas (leve/forte)',
+    'Timer regressivo por sub-fase com referência de pace/velocidade',
+    'Indicador de ciclo atual e aviso de último ciclo',
+    'Beep e voz nas transições entre sub-fases',
+    'Pular fase avança sub-fase no modo intervalado',
+    'Persistência completa do estado de intervalos ao retomar treino',
+  ]},
   { v: '2.5', date: '2026-06-16', items: [
     'Sininho sempre visível no header (não apenas quando há atualização)',
     'Ponto vermelho aparece apenas quando há versão nova disponível',
