@@ -4,10 +4,12 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   update-version:
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -16,14 +18,11 @@ jobs:
       - name: Generate version.json
         run: |
           VERSION=$(date -u +"%Y.%m.%d-%H%M")
-          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1 | sed 's/"/\\"/g')
-          cat > version.json << EOF
-          {
-            "versao": "$VERSION",
-            "data": "$(date -u +"%Y-%m-%d")",
-            "novidades": ["$COMMIT_MSG"]
-          }
-          EOF
+          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+          printf '{\n  "versao": "%s",\n  "data": "%s",\n  "novidades": ["%s"]\n}\n' \
+            "$VERSION" \
+            "$(date -u +"%Y-%m-%d")" \
+            "$COMMIT_MSG" > version.json
 
       - name: Commit version.json
         run: |
