@@ -18,6 +18,7 @@
     --alert-red-bg:#FEF1F1; --alert-green-bg:#F0FBF3;
     --badge-muted-bg:#F5F5F5; --badge-green-bg:#E0F7E9;
     --badge-orange-bg:#FFE9D9; --badge-red-bg:#FCE0E0; --badge-yellow-bg:#FFF4D1;
+    --blue:#1976D2; --badge-blue-bg:#E3F0FC;
   }
   [data-theme="dark"]{
     --bg:#0E0E0E; --bg2:#1A1A1A; --text:#F2F2F2; --muted:#9A9A9A;
@@ -25,6 +26,7 @@
     --alert-red-bg:#2A1414; --alert-green-bg:#0F2418;
     --badge-muted-bg:#222; --badge-green-bg:#163322;
     --badge-orange-bg:#3A1F0A; --badge-red-bg:#3A1414; --badge-yellow-bg:#3A2E0A;
+    --blue:#64B5F6; --badge-blue-bg:#0D2744;
     color-scheme:dark;
   }
   [data-theme="dark"] .card{background:var(--card)}
@@ -70,6 +72,8 @@
   .badge.red{background:var(--badge-red-bg);color:var(--red)}
   .badge.yellow{background:var(--badge-yellow-bg);color:#C8A12B}
   .badge.muted{background:var(--badge-muted-bg);color:var(--muted)}
+  .badge.blue{background:var(--badge-blue-bg);color:var(--blue)}
+  .badge.clickable{cursor:pointer;text-decoration:underline}
   .header-week{margin-bottom:16px}
   .header-week .focus{font-size:13px;color:var(--muted);margin-top:4px}
   .train-section{margin-top:10px}
@@ -122,6 +126,13 @@
   .help-list{padding-left:18px;font-size:14px;line-height:1.5}
   .help-list li{margin-bottom:6px}
   .btn.start{background:var(--accent);color:#fff;font-size:15px;padding:14px 16px}
+  .resume-banner{background:var(--accent);color:#fff;padding:14px 16px;border-radius:14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+  .resume-banner .rb-text{font-size:14px;font-weight:600}
+  .resume-banner .rb-sub{font-size:12px;opacity:.8;margin-top:2px}
+  .resume-banner .rb-actions{display:flex;gap:8px}
+  .resume-banner .rb-btn{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer}
+  .resume-banner .rb-btn.primary{background:#fff;color:var(--accent)}
+  .resume-banner .rb-btn.secondary{background:rgba(255,255,255,.2);color:#fff}
   .workout-overlay{position:fixed;inset:0;background:#0E0E0E;color:#fff;z-index:400;display:flex;flex-direction:column;padding:24px 20px;overflow:hidden}
   .workout-overlay .phase-label{font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#999;text-align:center}
   .workout-overlay .phase-name{font-size:32px;font-weight:700;text-align:center;margin-top:4px;color:#fff}
@@ -509,6 +520,120 @@ function isPastPredicted(trainIdx) {
   return new Date(dp + 'T23:59:59') < new Date();
 }
 
+function retomarTreino() {
+  const saved = getActiveWorkout();
+  if (!saved) return;
+  const w = getWeek();
+  const treino = w.treinos[saved.treinoIdx];
+  if (!treino) { clearActiveWorkout(); return; }
+
+  if (saved.pausedAt) {
+    const diff = Date.now() - saved.pausedAt;
+    saved.pausedAcc += diff;
+    saved.pausedFaseAcc += diff;
+    saved.pausedAt = null;
+  }
+
+  const fases = saved.fasesConfig;
+  const overlay = document.createElement('div');
+  overlay.className = 'workout-overlay';
+  overlay.innerHTML = `
+    <button class="mute-btn ${getSettings().mute ? 'muted' : ''}" id="wMute" aria-label="Silenciar">${getSettings().mute ? '🔇' : '🔊'}</button>
+    <div class="meta-row" style="padding-right:48px">
+      <span>${escapeHtml(saved.treinoTipo || treino.tipo)} · ${saved.modo === 'rua' ? 'Rua' : 'Esteira'}</span>
+      <span>Total: <span class="num" id="wTotal">00:00</span> / <span class="num" id="wTotalMax">00:00</span></span>
+    </div>
+    <div class="phase-dots" id="wDots"></div>
+    <div class="phase-label" id="wPhaseLbl">FASE ${saved.faseIdx + 1} DE ${fases.length}</div>
+    <div class="phase-name" id="wPhaseName">—</div>
+    <div class="timer" id="wTimer">00:00</div>
+    <div class="phase-progress"><div class="fill" id="wPhaseFill" style="width:0%"></div></div>
+    <div class="target-box">
+      <div class="lbl">Pace alvo</div>
+      <div class="val" id="wAlvo">—</div>
+      <div class="sub" id="wDesc">—</div>
+    </div>
+    <div class="controls">
+      <button class="ctrl-btn primary" id="wPause">Pausar</button>
+      <div class="row">
+        <button class="ctrl-btn" id="wSkip">Pular fase</button>
+        <button class="ctrl-btn danger" id="wStop">Encerrar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const totalDur = fases.reduce((a, f) => a + f.dur, 0);
+  document.getElementById('wTotalMax').textContent = fmtClock(totalDur);
+  const dotsEl = document.getElementById('wDots');
+  dotsEl.innerHTML = fases.map(() => `<span class="dot"></span>`).join('');
+
+  workoutState = {
+    overlay, fases,
+    faseIdx: saved.faseIdx,
+    faseStart: saved.faseStart,
+    workoutStart: saved.workoutStart,
+    pausedAt: null,
+    pausedAcc: saved.pausedAcc,
+    pausedFaseAcc: saved.pausedFaseAcc,
+    treinoIdx: saved.treinoIdx,
+    rafId: null,
+    avisou30: saved.avisou30,
+    encerrado: false,
+    wakeLock: null,
+    modo: saved.modo,
+    treinoTipo: saved.treinoTipo,
+  };
+  aquireWakeLock().then(wl => { if (workoutState) workoutState.wakeLock = wl; });
+
+  const f = fases[saved.faseIdx];
+  const dots = overlay.querySelectorAll('.dot');
+  dots.forEach((d, i) => { d.classList.toggle('done', i < saved.faseIdx); d.classList.toggle('current', i === saved.faseIdx); });
+  overlay.querySelector('#wPhaseName').textContent = f.nome;
+  overlay.querySelector('#wPhaseName').classList.toggle('principal', f.tipo === 'main');
+  overlay.querySelector('#wAlvo').textContent = f.alvo;
+  overlay.querySelector('#wDesc').textContent = f.desc;
+
+  bip(1, 660);
+  falar('Treino retomado.');
+  tick();
+
+  document.getElementById('wPause').addEventListener('click', togglePause);
+  document.getElementById('wSkip').addEventListener('click', pularFase);
+  document.getElementById('wStop').addEventListener('click', () => encerrarTreino(true));
+  document.getElementById('wMute').addEventListener('click', () => {
+    const s = getSettings();
+    setSettings({ ...s, mute: !s.mute });
+    const btn = document.getElementById('wMute');
+    btn.classList.toggle('muted', !s.mute);
+    btn.textContent = !s.mute ? '🔇' : '🔊';
+  });
+  document.addEventListener('visibilitychange', onVisibility);
+}
+
+function descartarTreinoAtivo() {
+  clearActiveWorkout();
+  render();
+  toast('Treino descartado', 'error');
+}
+
+function renderResumeBanner() {
+  const saved = getActiveWorkout();
+  if (!saved) return '';
+  const f = saved.fasesConfig[saved.faseIdx];
+  const elapsed = Math.floor((Date.now() - saved.workoutStart - saved.pausedAcc) / 1000);
+  return `<div class="resume-banner" id="resumeBanner">
+    <div>
+      <div class="rb-text">Treino em andamento</div>
+      <div class="rb-sub">${escapeHtml(f ? f.nome : '?')} · ${fmtClock(elapsed)} decorridos</div>
+    </div>
+    <div class="rb-actions">
+      <button class="rb-btn secondary" id="resumeDiscard">Descartar</button>
+      <button class="rb-btn primary" id="resumeBtn">Retomar</button>
+    </div>
+  </div>`;
+}
+
 function renderSemana() {
   const s = getSettings();
   const nome = (s.name || '').trim();
@@ -575,7 +700,8 @@ function renderSemana() {
     </div>
     <div class="focus">${w.foco_da_semana || ''}</div>
   </div>
-  ${greetingHtml}`;
+  ${greetingHtml}
+  ${renderResumeBanner()}`;
   if (w.alerta_coach) html += `<div class="card alert-red"><strong>Atenção do coach:</strong><br>${w.alerta_coach}</div>`;
   if (w.observacao_coach) html += `<div class="card" style="background:var(--bg2);border:none"><div class="muted" style="text-transform:uppercase;font-size:11px;letter-spacing:.5px;margin-bottom:4px">Observação do coach</div>${w.observacao_coach}</div>`;
 
@@ -984,6 +1110,10 @@ function attachHandlers() {
   if (btnVerSchema) btnVerSchema.addEventListener('click', openSchemaModal);
   const greetingCard = document.getElementById('greetingCard');
   if (greetingCard) greetingCard.addEventListener('click', openNomeModal);
+  const resumeBtn = document.getElementById('resumeBtn');
+  if (resumeBtn) resumeBtn.addEventListener('click', retomarTreino);
+  const resumeDiscard = document.getElementById('resumeDiscard');
+  if (resumeDiscard) resumeDiscard.addEventListener('click', descartarTreinoAtivo);
   const btnAddRace = document.getElementById('btnAddRace');
   if (btnAddRace) btnAddRace.addEventListener('click', openAddRaceModal);
   document.querySelectorAll('[data-action="delete-race"]').forEach(b => b.addEventListener('click', () => deletarCorrida(b.dataset.id)));
@@ -1279,15 +1409,64 @@ function previewSemana(back) {
     for (const e of nextWeek.estimativas_provas) {
       if (!e || !e.nome) continue;
       const existe = races.some(r => norm(r.name) === norm(e.nome));
-      const tag = existe ? '<span class="badge muted">atualizar</span>' : (e.nova ? '<span class="badge green">nova</span>' : '<span class="badge red">não encontrada</span>');
+      let tag;
+      if (existe) {
+        tag = '<span class="badge muted">atualizar</span>';
+      } else if (e.nova && e.distancia && e.tempo_estimado) {
+        tag = '<span class="badge blue">nova corrida</span>';
+      } else if (e.nova) {
+        const eid = 'estComp_' + Math.random().toString(36).slice(2, 8);
+        tag = `<span class="badge orange clickable" data-est-complete="${eid}">completar dados</span>`;
+        e._completeId = eid;
+      } else {
+        tag = '<span class="badge red">não encontrada</span>';
+      }
       html += `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
         <div class="row between"><strong>${escapeHtml(e.nome)}</strong>${tag}</div>
         <div class="muted" style="font-size:12px;margin-top:2px">${escapeHtml(e.tempo_estimado || '-')} · ${escapeHtml(e.pace_estimado || '-')}${e.data ? ` · ${fmtDateBR(e.data)}` : ''}</div>
+        <div id="${e._completeId || ''}" class="est-inline-form" style="display:none"></div>
       </div>`;
     }
     html += `</div>`;
   }
   out.innerHTML = html;
+
+  out.querySelectorAll('[data-est-complete]').forEach(badge => {
+    badge.addEventListener('click', () => {
+      const eid = badge.dataset.estComplete;
+      const est = nextWeek.estimativas_provas.find(x => x._completeId === eid);
+      if (!est) return;
+      const container = document.getElementById(eid);
+      if (container.style.display !== 'none') { container.style.display = 'none'; return; }
+      container.style.display = 'block';
+      container.innerHTML = `
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
+          <div class="field"><label>Distância (km)</label><input type="number" step="0.1" id="${eid}_dist" value="${est.distancia || ''}" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;width:100%"></div>
+          <div class="field"><label>Tempo estimado</label><input type="text" id="${eid}_tempo" value="${est.tempo_estimado || ''}" placeholder="ex: 2h05min" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;width:100%"></div>
+          <div class="field"><label>Pace estimado</label><input type="text" id="${eid}_pace" value="${est.pace_estimado || ''}" placeholder="ex: 5'50&quot;/km" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;width:100%"></div>
+          <div class="field"><label>Data (opcional)</label><input type="date" id="${eid}_data" value="${est.data || ''}" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;width:100%"></div>
+          <button class="btn" id="${eid}_save" style="font-size:13px;padding:10px">Adicionar ao calendário</button>
+        </div>`;
+      container.querySelector(`#${eid}_save`).addEventListener('click', () => {
+        const dist = container.querySelector(`#${eid}_dist`).value.trim();
+        const tempo = container.querySelector(`#${eid}_tempo`).value.trim();
+        if (!dist) { toast('Preencha a distância', 'error'); return; }
+        if (!tempo) { toast('Preencha o tempo estimado', 'error'); return; }
+        est.distancia = parseFloat(dist);
+        est.tempo_estimado = tempo;
+        est.pace_estimado = container.querySelector(`#${eid}_pace`).value.trim() || null;
+        est.data = container.querySelector(`#${eid}_data`).value || null;
+        est._completed = true;
+        container.style.display = 'none';
+        badge.className = 'badge blue';
+        badge.textContent = 'nova corrida';
+        badge.style.cursor = 'default';
+        badge.style.textDecoration = 'none';
+        badge.replaceWith(badge.cloneNode(true));
+        toast(`${est.nome} pronta para criação`, 'success');
+      });
+    });
+  });
 
   back.querySelector('#impJson').style.display = 'none';
   const lblJson = back.querySelector('label[for=""]') || back.querySelector('.field label');
@@ -1356,11 +1535,13 @@ function aplicarEstimativasProvas(estimativas) {
       races[idx] = r;
       atualizadas++;
     } else if (e.nova === true) {
-      if (!e.data) continue;
+      const temDadosSuficientes = e.distancia && e.tempo_estimado;
+      const completouManual = e._completed === true;
+      if (!temDadosSuficientes && !completouManual) continue;
       races.push({
         id: 'r' + Date.now() + Math.floor(Math.random() * 1000),
         name: String(e.nome),
-        date: String(e.data),
+        date: e.data ? String(e.data) : null,
         distance: String(e.distancia || '-'),
         time_estimate: e.tempo_estimado ? String(e.tempo_estimado) : null,
         estimate_pace: e.pace_estimado ? String(e.pace_estimado) : null,
@@ -1585,13 +1766,15 @@ function abrirWorkoutOverlay(treino, treinoIdx, modo, fases) {
     avisou30: false,
     encerrado: false,
     wakeLock: null,
+    modo,
+    treinoTipo: treino.tipo,
   };
   aquireWakeLock().then(wl => { if (workoutState) workoutState.wakeLock = wl; });
 
-  // unlock audio (precisa de gesto do usuário — clicar em "Iniciar treino" já é um)
   bip(0);
 
   iniciarFase(0, true);
+  saveActiveWorkout();
   tick();
 
   document.getElementById('wPause').addEventListener('click', togglePause);
@@ -1608,10 +1791,43 @@ function abrirWorkoutOverlay(treino, treinoIdx, modo, fases) {
   document.addEventListener('visibilitychange', onVisibility);
 }
 
+const ACTIVE_WORKOUT_KEY = 'runcoach_treino_ativo';
+
+function saveActiveWorkout() {
+  if (!workoutState || workoutState.encerrado) return;
+  const s = workoutState;
+  const data = {
+    treinoIdx: s.treinoIdx,
+    workoutStart: s.workoutStart,
+    faseIdx: s.faseIdx,
+    faseStart: s.faseStart,
+    pausedAcc: s.pausedAcc,
+    pausedFaseAcc: s.pausedFaseAcc,
+    pausedAt: s.pausedAt,
+    avisou30: s.avisou30,
+    fasesConfig: s.fases.map(f => ({ nome: f.nome, dur: f.dur, desc: f.desc, alvo: f.alvo, tipo: f.tipo })),
+    modo: s.modo,
+    treinoTipo: s.treinoTipo,
+  };
+  localStorage.setItem(ACTIVE_WORKOUT_KEY, JSON.stringify(data));
+}
+
+function clearActiveWorkout() {
+  localStorage.removeItem(ACTIVE_WORKOUT_KEY);
+}
+
+function getActiveWorkout() {
+  try { const v = localStorage.getItem(ACTIVE_WORKOUT_KEY); return v ? JSON.parse(v) : null; } catch { return null; }
+}
+
 function onVisibility() {
   if (!workoutState) return;
-  if (document.visibilityState === 'visible' && workoutState.wakeLock === null) {
-    aquireWakeLock().then(wl => { if (workoutState) workoutState.wakeLock = wl; });
+  if (document.visibilityState === 'visible') {
+    if (workoutState.wakeLock === null) {
+      aquireWakeLock().then(wl => { if (workoutState) workoutState.wakeLock = wl; });
+    }
+    if (workoutState.rafId) cancelAnimationFrame(workoutState.rafId);
+    tick();
   }
 }
 
@@ -1645,6 +1861,7 @@ function iniciarFase(idx, inicial = false) {
     vibrar([220, 100, 220, 100, 220]);
     falar(`Próxima fase: ${f.nome}. ${f.alvo}.`);
   }
+  saveActiveWorkout();
 }
 
 function tick() {
@@ -1698,6 +1915,7 @@ function togglePause() {
     btn.textContent = 'Retomar';
     falar('Pausado');
   }
+  saveActiveWorkout();
 }
 
 function pularFase() {
@@ -1714,6 +1932,7 @@ function encerrarTreino(cancelado) {
   const s = workoutState;
   if (!s || s.encerrado) return;
   s.encerrado = true;
+  clearActiveWorkout();
   if (s.rafId) cancelAnimationFrame(s.rafId);
   if (s.wakeLock) { try { s.wakeLock.release(); } catch {} }
   document.removeEventListener('visibilitychange', onVisibility);
@@ -1752,8 +1971,16 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '2.2';
+const APP_VERSION = '2.3';
 const CHANGELOG = [
+  { v: '2.3', date: '2026-06-16', items: [
+    'Estimativas de prova: auto-criação de corridas novas ao importar semana',
+    'Badge "nova corrida" (azul) para corridas com dados completos no JSON',
+    'Badge "completar dados" (laranja) com formulário inline para corridas incompletas',
+    'Timer do treino resiliente a background (baseado em timestamp, não intervalo)',
+    'Retomada de treino ao reabrir o app (banner "Treino em andamento")',
+    'Persistência do treino ativo no localStorage entre sessões',
+  ]},
   { v: '2.2', date: '2026-06-15', items: [
     'Migração de hospedagem: Netlify → Cloudflare Pages',
     'Novo domínio: runcoachdaily.pages.dev',
