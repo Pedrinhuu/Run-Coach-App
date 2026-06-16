@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.16-1339",
+  "versao": "2026.06.16-1707",
   "data": "2026-06-16",
-  "novidades": ["v2.7: Fix voz ao encerrar, cache no sininho, botão limpar cache"]
+  "novidades": ["v2.8: Notificações OS para troca de fases em background"]
 }
