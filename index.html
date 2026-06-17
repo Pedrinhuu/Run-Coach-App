@@ -132,11 +132,20 @@
   .zone-table td{padding:8px 6px;border-bottom:1px solid var(--border)}
   .zone-table tr:last-child td{border-bottom:none}
   .zone-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
-  .zone-dot.z1{background:#4CAF50}
-  .zone-dot.z2{background:#8BC34A}
-  .zone-dot.z3{background:#FFC107}
-  .zone-dot.z4{background:#FF9800}
-  .zone-dot.z5{background:#F44336}
+  .zone-dot.z1{background:#3b82f6}
+  .zone-dot.z2{background:#22c55e}
+  .zone-dot.z3{background:#eab308}
+  .zone-dot.z4{background:#f97316}
+  .zone-dot.z5{background:#ef4444}
+  .zone-badge{display:inline-flex;align-items:center;justify-content:center;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.3px}
+  .zone-badge.z1{background:#3b82f6}
+  .zone-badge.z2{background:#22c55e}
+  .zone-badge.z3{background:#eab308}
+  .zone-badge.z4{background:#f97316}
+  .zone-badge.z5{background:#ef4444}
+  .zone-bar{height:4px;border-radius:2px;display:flex;overflow:hidden;margin-bottom:10px}
+  .zone-bar-seg{height:100%}
+  .volume-label{font-size:13px;color:var(--accent);font-weight:700;margin-top:4px}
   .stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
   .stat-box{background:var(--bg2);border-radius:8px;padding:12px 10px;text-align:center}
   .stat-box .stat-val{font-size:22px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
@@ -345,25 +354,25 @@ const INITIAL_WEEK = {
   alerta_coach: null,
   treinos: [
     {
-      dia: "Segunda", tipo: "Corrida Contínua Leve",
+      dia: "Segunda", tipo: "Corrida Contínua Leve", distancia_km: 4.2,
       objetivo: "Ativar sem agredir. Primeira corrida com volume controlado.",
       status: "Pendente", data_prevista: null,
-      rua: { aquecimento: "5 min caminhada", principal: "20 min corrida contínua em pace 7'30\"/km - 8'00\"/km. Ritmo onde consegue falar frases completas sem ofegar.", desaquecimento: "5 min caminhada", duracao_total: "30 min", pace_alvo_central_segundos: 465 },
-      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", principal: "20 min a 7,0-7,5 km/h", desaquecimento: "5 min caminhada a 5,0 km/h", duracao_total: "30 min" }
+      rua: { aquecimento: "5 min caminhada", zona_aquecimento: "Z1", principal: "20 min corrida contínua em pace 7'30\"/km - 8'00\"/km. Ritmo onde consegue falar frases completas sem ofegar.", zona_principal: "Z2", desaquecimento: "5 min caminhada", zona_desaquecimento: "Z1", duracao_total: "30 min", distancia_km: 4.2, pace_alvo_central_segundos: 465 },
+      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", zona_aquecimento: "Z1", principal: "20 min a 7,0-7,5 km/h", zona_principal: "Z2", desaquecimento: "5 min caminhada a 5,0 km/h", zona_desaquecimento: "Z1", duracao_total: "30 min", distancia_km: 4.2 }
     },
     {
-      dia: "Quinta", tipo: "Fartlek Simples",
+      dia: "Quinta", tipo: "Fartlek Simples", distancia_km: 5.2,
       objetivo: "Introduzir variação de esforço sem intervalado clássico.",
       status: "Pendente", data_prevista: null,
-      rua: { aquecimento: "5 min caminhada", principal: "20 min alternando: 2 min em pace 7'30\"/km - 8'00\"/km + 1 min em pace 6'30\"/km - 6'45\"/km. Repetir o ciclo (~6-7x).", desaquecimento: "5 min caminhada", duracao_total: "30 min", pace_alvo_central_segundos: 435 },
-      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", principal: "20 min alternando: 2 min a 7,0 km/h + 1 min a 8,5 km/h. Repetir o ciclo.", desaquecimento: "5 min caminhada a 5,0 km/h", duracao_total: "30 min" }
+      rua: { aquecimento: "5 min caminhada", zona_aquecimento: "Z1", principal: "20 min alternando: 2 min em pace 7'30\"/km - 8'00\"/km + 1 min em pace 6'30\"/km - 6'45\"/km. Repetir o ciclo (~6-7x).", zona_principal: "Z3", desaquecimento: "5 min caminhada", zona_desaquecimento: "Z1", duracao_total: "30 min", distancia_km: 5.2, pace_alvo_central_segundos: 435 },
+      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", zona_aquecimento: "Z1", principal: "20 min alternando: 2 min a 7,0 km/h + 1 min a 8,5 km/h. Repetir o ciclo.", zona_principal: "Z3", desaquecimento: "5 min caminhada a 5,0 km/h", zona_desaquecimento: "Z1", duracao_total: "30 min", distancia_km: 5.2 }
     },
     {
-      dia: "Sábado", tipo: "Longão Z2",
+      dia: "Sábado", tipo: "Longão Z2", distancia_km: 6.0,
       objetivo: "Construir base aeróbica. Treino mais importante da semana.",
       status: "Pendente", data_prevista: null,
-      rua: { aquecimento: "5 min caminhada", principal: "30 min corrida contínua em pace 7'45\"/km - 8'30\"/km. Mais lento que segunda. Em subidas, mantém esforço, não o pace.", desaquecimento: "5 min caminhada", duracao_total: "40 min", pace_alvo_central_segundos: 488 },
-      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", principal: "30 min a 6,5-7,0 km/h", desaquecimento: "5 min caminhada a 5,0 km/h", duracao_total: "40 min" }
+      rua: { aquecimento: "5 min caminhada", zona_aquecimento: "Z1", principal: "30 min corrida contínua em pace 7'45\"/km - 8'30\"/km. Mais lento que segunda. Em subidas, mantém esforço, não o pace.", zona_principal: "Z2", desaquecimento: "5 min caminhada", zona_desaquecimento: "Z1", duracao_total: "40 min", distancia_km: 6.0, pace_alvo_central_segundos: 488 },
+      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", zona_aquecimento: "Z1", principal: "30 min a 6,5-7,0 km/h", zona_principal: "Z2", desaquecimento: "5 min caminhada a 5,0 km/h", zona_desaquecimento: "Z1", duracao_total: "40 min", distancia_km: 6.0 }
     }
   ],
   observacao_coach: "Paces vão parecer lentos e devem parecer. Fase base é assim. A tentação de correr mais rápido é o principal caminho para lesão no joelho."
@@ -760,6 +769,7 @@ function renderSemana() {
       </div>
     </div>
     <div class="focus">${w.foco_da_semana || ''}</div>
+    ${(() => { const vol = calcVolumeSemanal(w); return vol > 0 ? `<div class="volume-label">Volume: ${vol.toFixed(1)} km</div>` : ''; })()}
   </div>
   ${greetingHtml}
   ${renderResumeBanner()}`;
@@ -770,7 +780,10 @@ function renderSemana() {
     const mode = trainModeByIdx[idx] || 'rua';
     const data = t[mode];
     const showRealocar = isPastPredicted(idx);
+    const distKm = getDistanciaKm(t, mode);
+    const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data.duracao_total || ''].filter(Boolean).join(' · ');
     html += `<div class="card">
+      ${zoneBarHtml(data)}
       <div class="row between">
         <div><h3>${t.dia} — ${t.tipo}</h3>${t.data_prevista ? `<div class="muted" style="font-size:11px;margin-top:2px">Data: ${fmtDateBR(t.data_prevista)}</div>`:''}</div>
         ${statusBadge(t.status)}
@@ -780,10 +793,10 @@ function renderSemana() {
         <button data-mode-idx="${idx}" data-mode="rua" class="${mode==='rua'?'active':''}">Rua</button>
         <button data-mode-idx="${idx}" data-mode="esteira" class="${mode==='esteira'?'active':''}">Esteira</button>
       </div>
-      <div class="train-section"><div class="label">Aquecimento</div><div class="text">${data.aquecimento||''}</div></div>
-      <div class="train-section"><div class="label">Principal</div><div class="text">${data.principal||''}</div></div>
-      <div class="train-section"><div class="label">Desaquecimento</div><div class="text">${data.desaquecimento||''}</div></div>
-      <div class="train-section"><div class="label">Duração total</div><div class="text num">${data.duracao_total||''}</div></div>
+      <div class="train-section"><div class="row between"><div class="label">Aquecimento</div>${zoneBadgeHtml(data.zona_aquecimento)}</div><div class="text">${data.aquecimento||''}</div></div>
+      <div class="train-section"><div class="row between"><div class="label">Principal</div>${zoneBadgeHtml(data.zona_principal)}</div><div class="text">${data.principal||''}</div></div>
+      <div class="train-section"><div class="row between"><div class="label">Desaquecimento</div>${zoneBadgeHtml(data.zona_desaquecimento)}</div><div class="text">${data.desaquecimento||''}</div></div>
+      <div class="train-section"><div class="label">Duração total</div><div class="text num">${duracaoDistHtml}</div></div>
       <button class="btn start" data-action="start" data-idx="${idx}" style="margin-top:12px">▶ Iniciar treino</button>
       <button class="btn outline" data-action="copy" data-idx="${idx}" style="margin-top:8px;font-size:13px">📋 Copiar para Zepp</button>
       <div class="btn-row" style="margin-top:10px">
@@ -1063,6 +1076,48 @@ function setAvaliacao(data) {
   localStorage.setItem(AVALIACAO_KEY, JSON.stringify(data));
 }
 
+const ZONE_COLORS = { Z1: '#3b82f6', Z2: '#22c55e', Z3: '#eab308', Z4: '#f97316', Z5: '#ef4444' };
+
+function zoneBadgeHtml(zona) {
+  if (!zona || !ZONE_COLORS[zona]) return '';
+  return `<span class="zone-badge ${zona.toLowerCase()}">${zona}</span>`;
+}
+
+function zoneBarHtml(data) {
+  if (!data || !data.duracao_total) return '';
+  const hasAnyZone = data.zona_aquecimento || data.zona_principal || data.zona_desaquecimento;
+  if (!hasAnyZone) return '';
+  const aqMin = extrairMinutos(data.aquecimento) || 0;
+  const dqMin = extrairMinutos(data.desaquecimento) || 0;
+  const totalMin = extrairMinutos(data.duracao_total) || 0;
+  if (totalMin <= 0) return '';
+  const principalMin = Math.max(0, totalMin - aqMin - dqMin);
+  const segments = [];
+  if (aqMin > 0) segments.push({ pct: (aqMin / totalMin) * 100, color: ZONE_COLORS[data.zona_aquecimento] || '#ccc' });
+  if (principalMin > 0) segments.push({ pct: (principalMin / totalMin) * 100, color: ZONE_COLORS[data.zona_principal] || '#ccc' });
+  if (dqMin > 0) segments.push({ pct: (dqMin / totalMin) * 100, color: ZONE_COLORS[data.zona_desaquecimento] || '#ccc' });
+  if (segments.length === 0 && data.zona_principal) return `<div class="zone-bar"><div class="zone-bar-seg" style="width:100%;background:${ZONE_COLORS[data.zona_principal]}"></div></div>`;
+  return `<div class="zone-bar">${segments.map(s => `<div class="zone-bar-seg" style="width:${s.pct.toFixed(1)}%;background:${s.color}"></div>`).join('')}</div>`;
+}
+
+function getDistanciaKm(t, mode) {
+  const data = t[mode];
+  if (data && data.distancia_km) return data.distancia_km;
+  if (t.distancia_km) return t.distancia_km;
+  return null;
+}
+
+function calcVolumeSemanal(w) {
+  if (!w || !w.treinos) return 0;
+  let total = 0;
+  for (const t of w.treinos) {
+    const mode = trainModeByIdx[w.treinos.indexOf(t)] || 'rua';
+    const km = getDistanciaKm(t, mode);
+    if (km) total += km;
+  }
+  return total;
+}
+
 const ZONE_PERCENTS = {
   z1: { min: 0.55, max: 0.65, label: 'Z1 · Regenerativo', cls: 'z1' },
   z2: { min: 0.65, max: 0.75, label: 'Z2 · Aeróbico leve', cls: 'z2' },
@@ -1073,9 +1128,9 @@ const ZONE_PERCENTS = {
 
 function kmhToPace(kmh) {
   if (!kmh || kmh <= 0) return '—';
-  const secs = 3600 / kmh;
-  const m = Math.floor(secs / 60);
-  const s = Math.round(secs % 60);
+  const totalSecs = Math.round(3600 / kmh);
+  const m = Math.floor(totalSecs / 60);
+  const s = totalSecs % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
@@ -2576,8 +2631,17 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '2.9';
+const APP_VERSION = '3.0';
 const CHANGELOG = [
+  { v: '3.0', date: '2026-06-17', items: [
+    'Fix: pace "5:60" corrigido para arredondamento correto (Bug kmhToPace)',
+    'Fix: cores das zonas Z1-Z5 corrigidas (azul→verde→amarelo→laranja→vermelho)',
+    'Badges de zona (Z1-Z5) por bloco nos cards de treino',
+    'Barra colorida de segmentos por zona no topo de cada card',
+    'Distância por treino (km) ao lado da duração',
+    'Volume semanal total (km) no header da semana',
+    'Campos opcionais zona_* e distancia_km no JSON semanal',
+  ]},
   { v: '2.9', date: '2026-06-17', items: [
     'Nova aba Avaliação de Performance: calcule VAM, VO2max e zonas de pace (Z1–Z5)',
     'Suporte a testes de pista, tempo fixo, esteira, prova e entrada manual',
