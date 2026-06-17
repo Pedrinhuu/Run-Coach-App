@@ -127,6 +127,30 @@
   .toast.success{background:var(--green)}
   .help-list{padding-left:18px;font-size:14px;line-height:1.5}
   .help-list li{margin-bottom:6px}
+  .zone-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px}
+  .zone-table th{text-align:left;padding:8px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)}
+  .zone-table td{padding:8px 6px;border-bottom:1px solid var(--border)}
+  .zone-table tr:last-child td{border-bottom:none}
+  .zone-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+  .zone-dot.z1{background:#4CAF50}
+  .zone-dot.z2{background:#8BC34A}
+  .zone-dot.z3{background:#FFC107}
+  .zone-dot.z4{background:#FF9800}
+  .zone-dot.z5{background:#F44336}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+  .stat-box{background:var(--bg2);border-radius:8px;padding:12px 10px;text-align:center}
+  .stat-box .stat-val{font-size:22px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+  .stat-box .stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-top:2px}
+  .test-option{padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;font-size:14px;font-weight:600;transition:border-color .15s}
+  .test-option:active{border-color:var(--accent)}
+  .test-cat-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin:14px 0 6px}
+  .test-cat-label:first-child{margin-top:0}
+  .test-history-item{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg2);border-radius:8px;margin-bottom:8px}
+  .test-history-item .thi-info{flex:1}
+  .test-history-item .thi-tipo{font-weight:600;font-size:14px}
+  .test-history-item .thi-data{font-size:12px;color:var(--muted)}
+  .test-history-item .thi-vals{font-size:13px;margin-top:2px}
+  .inline-error{color:var(--red);font-size:12px;margin-top:4px;display:none}
   .btn.start{background:var(--accent);color:#fff;font-size:15px;padding:14px 16px}
   .resume-banner{background:var(--accent);color:#fff;padding:14px 16px;border-radius:14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
   .resume-banner .rb-text{font-size:14px;font-weight:600}
@@ -224,6 +248,10 @@
       <button class="nav-btn" data-tab="calendario">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
         Calendário
+      </button>
+      <button class="nav-btn" data-tab="avaliacao">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Avaliação
       </button>
     </div>
   </nav>
@@ -450,7 +478,7 @@ function detectTriggers() {
 /* ========== ROUTER ========== */
 let currentTab = 'semana';
 let trainModeByIdx = {};
-const TAB_ORDER = ['semana', 'historico', 'metricas', 'calendario'];
+const TAB_ORDER = ['semana', 'historico', 'metricas', 'calendario', 'avaliacao'];
 
 function setTab(name) {
   currentTab = name;
@@ -498,6 +526,7 @@ function render() {
   else if (currentTab === 'historico') el.innerHTML = renderHistorico();
   else if (currentTab === 'metricas') el.innerHTML = renderMetricas();
   else if (currentTab === 'calendario') el.innerHTML = renderCalendario();
+  else if (currentTab === 'avaliacao') el.innerHTML = renderAvaliacao();
   attachHandlers();
 }
 
@@ -1024,6 +1053,296 @@ function renderCalendario() {
   return html;
 }
 
+/* ========== TAB 5: AVALIAÇÃO ========== */
+const AVALIACAO_KEY = 'runcoach_avaliacao';
+
+function getAvaliacao() {
+  try { const v = localStorage.getItem(AVALIACAO_KEY); return v ? JSON.parse(v) : null; } catch { return null; }
+}
+function setAvaliacao(data) {
+  localStorage.setItem(AVALIACAO_KEY, JSON.stringify(data));
+}
+
+const ZONE_PERCENTS = {
+  z1: { min: 0.55, max: 0.65, label: 'Z1 · Regenerativo', cls: 'z1' },
+  z2: { min: 0.65, max: 0.75, label: 'Z2 · Aeróbico leve', cls: 'z2' },
+  z3: { min: 0.75, max: 0.85, label: 'Z3 · Tempo/Limiar', cls: 'z3' },
+  z4: { min: 0.85, max: 0.92, label: 'Z4 · Limiar alto', cls: 'z4' },
+  z5: { min: 0.92, max: 1.00, label: 'Z5 · VO2max', cls: 'z5' },
+};
+
+function kmhToPace(kmh) {
+  if (!kmh || kmh <= 0) return '—';
+  const secs = 3600 / kmh;
+  const m = Math.floor(secs / 60);
+  const s = Math.round(secs % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function calcZonas(vam) {
+  const zonas = {};
+  for (const [key, z] of Object.entries(ZONE_PERCENTS)) {
+    const minKmh = +(vam * z.min).toFixed(2);
+    const maxKmh = +(vam * z.max).toFixed(2);
+    const midKmh = (minKmh + maxKmh) / 2;
+    zonas[key] = {
+      min_kmh: minKmh,
+      max_kmh: maxKmh,
+      pace_min: kmhToPace(maxKmh),
+      pace_max: kmhToPace(minKmh),
+      pace_central: kmhToPace(midKmh),
+    };
+  }
+  return zonas;
+}
+
+function calcVAM(tipo, entrada) {
+  if (tipo === 'VAM Esteira' || tipo === 'VAM Manual') return entrada.velocidade_kmh;
+  if (entrada.tempo_segundos && entrada.distancia_metros) {
+    return (entrada.distancia_metros / entrada.tempo_segundos) * 3.6;
+  }
+  return 0;
+}
+
+const TEST_TYPES = [
+  { cat: 'Distância', items: [
+    { nome: 'Pista 1600m', dist: 1600, input: 'tempo' },
+    { nome: 'Pista 2400m', dist: 2400, input: 'tempo' },
+    { nome: 'Pista 3000m', dist: 3000, input: 'tempo' },
+    { nome: 'Pista 3200m', dist: 3200, input: 'tempo' },
+    { nome: 'Pista 5000m', dist: 5000, input: 'tempo' },
+  ]},
+  { cat: 'Tempo fixo', items: [
+    { nome: 'Teste 5 minutos', durSeg: 300, input: 'distancia' },
+    { nome: 'Cooper 12 minutos', durSeg: 720, input: 'distancia' },
+  ]},
+  { cat: 'Esteira', items: [
+    { nome: 'VAM Esteira', input: 'velocidade' },
+  ]},
+  { cat: 'Prova', items: [
+    { nome: 'Prova 5K', dist: 5000, input: 'tempo' },
+    { nome: 'Prova 10K', dist: 10000, input: 'tempo' },
+    { nome: 'Meia Maratona', dist: 21097, input: 'tempo' },
+    { nome: 'Maratona', dist: 42195, input: 'tempo' },
+  ]},
+  { cat: 'Manual', items: [
+    { nome: 'VAM Manual', input: 'velocidade' },
+  ]},
+];
+
+function findTestType(nome) {
+  for (const cat of TEST_TYPES) {
+    const found = cat.items.find(t => t.nome === nome);
+    if (found) return found;
+  }
+  return null;
+}
+
+function recalcAvaliacaoFromTests(av) {
+  if (!av || !av.testes || av.testes.length === 0) return null;
+  const ultimo = av.testes[av.testes.length - 1];
+  av.vam = +ultimo.vam.toFixed(2);
+  av.vo2max = +(ultimo.vam * 3.5).toFixed(1);
+  av.zonas = calcZonas(ultimo.vam);
+  av.atualizado_em = ultimo.data;
+  return av;
+}
+
+function renderAvaliacao() {
+  const av = getAvaliacao();
+  let html = `<div class="row between" style="margin-bottom:12px">
+    <h1>Avaliação</h1>
+  </div>`;
+
+  if (!av || !av.testes || av.testes.length === 0) {
+    html += `<div class="empty">
+      <div style="font-size:36px;margin-bottom:12px">🏃‍♂️📊</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">Nenhuma avaliação realizada</div>
+      <div style="margin-bottom:16px">Faça seu primeiro teste de performance para calcular suas zonas de treino (Z1-Z5), VO2max e VAM.</div>
+      <button class="btn" id="btnNovoTeste">Realizar primeiro teste</button>
+    </div>`;
+    return html;
+  }
+
+  html += `<div class="stat-grid">
+    <div class="stat-box"><div class="stat-val">${av.vam.toFixed(1)}</div><div class="stat-lbl">VAM (km/h)</div></div>
+    <div class="stat-box"><div class="stat-val">${av.vo2max.toFixed(1)}</div><div class="stat-lbl">VO2max</div></div>
+    <div class="stat-box"><div class="stat-val">${av.testes.length}</div><div class="stat-lbl">Testes</div></div>
+  </div>`;
+
+  html += `<div class="card">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-bottom:8px">Zonas de pace</div>
+    <table class="zone-table">
+      <tr><th>Zona</th><th>Pace</th><th>Central</th><th>km/h</th></tr>`;
+  for (const [key, z] of Object.entries(ZONE_PERCENTS)) {
+    const zona = av.zonas[key];
+    html += `<tr>
+      <td><span class="zone-dot ${z.cls}"></span>${z.label}</td>
+      <td class="num">${zona.pace_min} — ${zona.pace_max}</td>
+      <td class="num" style="font-weight:700;color:var(--accent)">${zona.pace_central}</td>
+      <td class="num">${zona.min_kmh.toFixed(1)}–${zona.max_kmh.toFixed(1)}</td>
+    </tr>`;
+  }
+  html += `</table>
+    <div class="muted" style="font-size:11px">Último teste: ${fmtDateBR(av.atualizado_em)}</div>
+  </div>`;
+
+  html += `<button class="btn" id="btnNovoTeste" style="margin-bottom:16px">Novo Teste de Performance</button>`;
+
+  html += `<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-bottom:8px">Histórico de testes</div>`;
+  const testes = [...av.testes].reverse();
+  for (const t of testes) {
+    html += `<div class="test-history-item">
+      <div class="thi-info">
+        <div class="thi-tipo">${escapeHtml(t.tipo)}</div>
+        <div class="thi-data">${fmtDateBR(t.data)}</div>
+        <div class="thi-vals">VAM <span class="num" style="font-weight:700">${t.vam.toFixed(1)}</span> km/h · VO2max <span class="num" style="font-weight:700">${t.vo2max.toFixed(1)}</span></div>
+      </div>
+      <button class="help-btn" data-action="delete-test" data-id="${t.id}" aria-label="Remover" style="width:24px;height:24px;font-size:12px">✕</button>
+    </div>`;
+  }
+
+  return html;
+}
+
+function openNovoTesteModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  let optionsHtml = '';
+  for (const cat of TEST_TYPES) {
+    optionsHtml += `<div class="test-cat-label">${cat.cat}</div>`;
+    for (const t of cat.items) {
+      optionsHtml += `<div class="test-option" data-test="${escapeHtml(t.nome)}">${escapeHtml(t.nome)}</div>`;
+    }
+  }
+  back.innerHTML = `<div class="modal" style="padding:20px">
+    <h2 style="margin-bottom:14px">Novo Teste de Performance</h2>
+    ${optionsHtml}
+    <button class="btn outline" id="testCancel" style="margin-top:10px">Cancelar</button>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#testCancel').addEventListener('click', () => back.remove());
+  back.querySelectorAll('.test-option').forEach(el => {
+    el.addEventListener('click', () => {
+      back.remove();
+      openTesteInputModal(el.dataset.test);
+    });
+  });
+}
+
+function openTesteInputModal(tipoNome) {
+  const tt = findTestType(tipoNome);
+  if (!tt) return;
+
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+
+  let fieldsHtml = '';
+  if (tt.input === 'tempo') {
+    fieldsHtml = `<div class="field"><label>Tempo realizado</label>${pickerInputHtml('testTempo', '', 'MM:SS')}</div>`;
+  } else if (tt.input === 'distancia') {
+    fieldsHtml = `<div class="field"><label>Distância percorrida (metros)</label><input type="number" id="testDist" placeholder="ex: 2400" inputmode="numeric" min="1"></div>`;
+  } else if (tt.input === 'velocidade') {
+    fieldsHtml = `<div class="field"><label>Velocidade máxima (km/h)</label><input type="number" id="testVel" placeholder="ex: 12.5" inputmode="decimal" step="0.1" min="5" max="30"></div>`;
+  }
+
+  back.innerHTML = `<div class="modal" style="padding:20px">
+    <h2 style="margin-bottom:4px">${escapeHtml(tipoNome)}</h2>
+    <div class="muted" style="margin-bottom:14px">${tt.input === 'tempo' ? `Distância: ${(tt.dist/1000).toFixed(tt.dist >= 10000 ? 1 : 0)} km` : tt.input === 'distancia' ? `Duração: ${tt.durSeg / 60} minutos` : 'Informe a velocidade atingida'}</div>
+    ${fieldsHtml}
+    <div class="field"><label>Data do teste</label>${pickerInputHtml('testData', fmtDateBR(todayISO()), 'Selecionar data')}</div>
+    <div id="testError" class="inline-error"></div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn outline" id="testInputCancel">Cancelar</button>
+      <button class="btn" id="testInputSave">Calcular e Salvar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#testInputCancel').addEventListener('click', () => back.remove());
+
+  const dataEl = back.querySelector('#testData');
+  dataEl.dataset.value = todayISO();
+  dataEl.addEventListener('click', () => {
+    openDatePicker(dataEl.dataset.value, (iso) => pickerInputSet(dataEl, iso, fmtDateBR(iso)));
+  });
+
+  if (tt.input === 'tempo') {
+    const tempoEl = back.querySelector('#testTempo');
+    tempoEl.dataset.value = '';
+    tempoEl.addEventListener('click', () => {
+      const cur = parseInt(tempoEl.dataset.value) || 0;
+      openTempoPicker(cur, ({ seconds, text }) => pickerInputSet(tempoEl, String(seconds), text));
+    });
+  }
+
+  back.querySelector('#testInputSave').addEventListener('click', () => {
+    const errEl = back.querySelector('#testError');
+    errEl.style.display = 'none';
+
+    let entrada = {};
+    let vam = 0;
+
+    if (tt.input === 'tempo') {
+      const tempoSeg = parseInt(back.querySelector('#testTempo').dataset.value) || 0;
+      if (tempoSeg <= 0) { errEl.textContent = 'Informe o tempo realizado.'; errEl.style.display = 'block'; return; }
+      entrada = { tempo_segundos: tempoSeg, distancia_metros: tt.dist };
+      vam = (tt.dist / tempoSeg) * 3.6;
+    } else if (tt.input === 'distancia') {
+      const dist = parseFloat(back.querySelector('#testDist').value);
+      if (!dist || dist <= 0) { errEl.textContent = 'Informe a distância percorrida.'; errEl.style.display = 'block'; return; }
+      entrada = { tempo_segundos: tt.durSeg, distancia_metros: dist };
+      vam = (dist / tt.durSeg) * 3.6;
+    } else if (tt.input === 'velocidade') {
+      const vel = parseFloat(back.querySelector('#testVel').value);
+      if (!vel || vel < 5 || vel > 30) { errEl.textContent = 'VAM deve estar entre 5 e 30 km/h.'; errEl.style.display = 'block'; return; }
+      entrada = { velocidade_kmh: vel };
+      vam = vel;
+    }
+
+    const data = dataEl.dataset.value || todayISO();
+    const vo2max = +(vam * 3.5).toFixed(1);
+    vam = +vam.toFixed(2);
+
+    const teste = {
+      id: Date.now(),
+      tipo: tipoNome,
+      data,
+      entrada,
+      vam,
+      vo2max,
+    };
+
+    let av = getAvaliacao() || { vo2max: 0, vam: 0, zonas: {}, atualizado_em: '', testes: [] };
+    av.testes.push(teste);
+    av.testes.sort((a, b) => a.data.localeCompare(b.data) || a.id - b.id);
+    recalcAvaliacaoFromTests(av);
+    setAvaliacao(av);
+
+    back.remove();
+    render();
+    toast('Teste salvo! Zonas atualizadas.', 'success');
+  });
+}
+
+function deletarTeste(id) {
+  const av = getAvaliacao();
+  if (!av || !av.testes) return;
+  const t = av.testes.find(x => x.id === id);
+  if (!t) return;
+  if (!confirm(`Remover teste "${t.tipo}" de ${fmtDateBR(t.data)}?`)) return;
+  av.testes = av.testes.filter(x => x.id !== id);
+  if (av.testes.length === 0) {
+    localStorage.removeItem(AVALIACAO_KEY);
+  } else {
+    recalcAvaliacaoFromTests(av);
+    setAvaliacao(av);
+  }
+  render();
+  toast('Teste removido');
+}
+
 function escapeHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -1153,6 +1472,9 @@ function attachHandlers() {
   if (btnAddRace) btnAddRace.addEventListener('click', openAddRaceModal);
   document.querySelectorAll('[data-action="delete-race"]').forEach(b => b.addEventListener('click', () => deletarCorrida(b.dataset.id)));
   document.querySelectorAll('[data-action="edit-race"]').forEach(b => b.addEventListener('click', () => openRaceModal(b.dataset.id)));
+  const btnNovoTeste = document.getElementById('btnNovoTeste');
+  if (btnNovoTeste) btnNovoTeste.addEventListener('click', openNovoTesteModal);
+  document.querySelectorAll('[data-action="delete-test"]').forEach(b => b.addEventListener('click', () => deletarTeste(parseInt(b.dataset.id))));
   document.querySelectorAll('[data-action="edit-log"]').forEach(b => b.addEventListener('click', () => {
     const ts = parseInt(b.dataset.ts);
     const log = getLogs().find(x => x.ts === ts);
@@ -2254,8 +2576,15 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '2.8';
+const APP_VERSION = '2.9';
 const CHANGELOG = [
+  { v: '2.9', date: '2026-06-17', items: [
+    'Nova aba Avaliação de Performance: calcule VAM, VO2max e zonas de pace (Z1–Z5)',
+    'Suporte a testes de pista, tempo fixo, esteira, prova e entrada manual',
+    'Tabela de zonas com pace min/max e central para cada zona',
+    'Histórico de testes com recálculo automático ao excluir',
+    'Estrutura de dados extensível para futuras integrações (Intervals.icu, badges de zona)',
+  ]},
   { v: '2.8', date: '2026-06-16', items: [
     'Notificações do sistema (OS) para troca de fases quando app está em background',
     'Notificação 30s/5s antes da transição de fase/sub-fase',
