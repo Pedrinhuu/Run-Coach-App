@@ -389,12 +389,34 @@ const INITIAL_WEEK = {
 
 /* ========== STORAGE ========== */
 const KEYS = { week: 'runcoach_semana_atual', logs: 'runcoach_logs', history: 'runcoach_historico_semanas', races: 'runcoach_corridas' };
-function load(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } }
+function load(k, def) {
+  try {
+    const v = localStorage.getItem(k);
+    return v ? JSON.parse(v) : def;
+  } catch (e) {
+    console.error('Erro ao ler ' + k + ':', e);
+    localStorage.removeItem(k);
+    return def;
+  }
+}
 function save(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+const WEEK_DEFAULT = { semana_atual: 0, fase: '-', foco_da_semana: '', alerta_coach: null, treinos: [], observacao_coach: '' };
 function getWeek() {
-  const stored = localStorage.getItem(KEYS.week);
-  if (stored) { try { return JSON.parse(stored); } catch {} }
-  return { semana_atual: 0, fase: '-', foco_da_semana: '', alerta_coach: null, treinos: [], observacao_coach: '' };
+  try {
+    const stored = localStorage.getItem(KEYS.week);
+    if (!stored) return { ...WEEK_DEFAULT };
+    const parsed = JSON.parse(stored);
+    if (!parsed || !Array.isArray(parsed.treinos)) {
+      console.error('runcoach_semana_atual com estrutura inválida, resetando');
+      localStorage.removeItem(KEYS.week);
+      return { ...WEEK_DEFAULT };
+    }
+    return parsed;
+  } catch (e) {
+    console.error('Erro ao ler semana:', e);
+    localStorage.removeItem(KEYS.week);
+    return { ...WEEK_DEFAULT };
+  }
 }
 function setWeek(w) { save(KEYS.week, w); }
 function getLogs() { return load(KEYS.logs, []); }
@@ -2107,38 +2129,47 @@ function previewSemana(back) {
   oldBtn.parentNode.replaceChild(newBtn, oldBtn);
 
   newBtn.addEventListener('click', () => {
-    const temSemanaExistente = !!localStorage.getItem(KEYS.week);
-    const w = getWeek();
-    if (temSemanaExistente) {
-      w.treinos.forEach((t, idx) => {
-        if (t.status === 'Pendente' && isPastPredicted(idx)) t.status = 'Perdido';
+    try {
+      if (!nextWeek || !Array.isArray(nextWeek.treinos) || nextWeek.treinos.length === 0) {
+        toast('JSON inválido: campo treinos ausente ou vazio', 'error');
+        return;
+      }
+      const temSemanaExistente = !!localStorage.getItem(KEYS.week);
+      const w = getWeek();
+      if (temSemanaExistente) {
+        w.treinos.forEach((t, idx) => {
+          if (t.status === 'Pendente' && isPastPredicted(idx)) t.status = 'Perdido';
+        });
+        setWeek(w);
+        const hist = getHistory(); hist.push(getWeek()); setHistory(hist);
+      }
+      const treinosComStatus = nextWeek.treinos.map(t => ({ ...t, status: 'Pendente', data_prevista: null }));
+      setWeek({
+        semana_atual: nextWeek.semana || (temSemanaExistente ? w.semana_atual + 1 : 1),
+        fase: nextWeek.fase || w.fase || '-',
+        foco_da_semana: nextWeek.foco_da_semana || '',
+        alerta_coach: nextWeek.alerta_coach || null,
+        treinos: treinosComStatus,
+        observacao_coach: nextWeek.observacao_coach || ''
       });
-      setWeek(w);
-      const hist = getHistory(); hist.push(getWeek()); setHistory(hist);
-    }
-    const treinosComStatus = nextWeek.treinos.map(t => ({ ...t, status: 'Pendente', data_prevista: null }));
-    setWeek({
-      semana_atual: nextWeek.semana || (temSemanaExistente ? w.semana_atual + 1 : 1),
-      fase: nextWeek.fase || w.fase || '-',
-      foco_da_semana: nextWeek.foco_da_semana || '',
-      alerta_coach: nextWeek.alerta_coach || null,
-      treinos: treinosComStatus,
-      observacao_coach: nextWeek.observacao_coach || ''
-    });
 
-    const resumo = aplicarEstimativasProvas(nextWeek.estimativas_provas);
+      const resumo = aplicarEstimativasProvas(nextWeek.estimativas_provas);
 
-    trainModeByIdx = {};
-    back.remove();
-    setTab('semana');
-    let msg = 'Nova semana importada';
-    if (resumo.atualizadas || resumo.criadas) {
-      const partes = [];
-      if (resumo.atualizadas) partes.push(`${resumo.atualizadas} corrida${resumo.atualizadas>1?'s':''} atualizada${resumo.atualizadas>1?'s':''}`);
-      if (resumo.criadas) partes.push(`${resumo.criadas} nova${resumo.criadas>1?'s':''}`);
-      msg += ` · ${partes.join(', ')}`;
+      trainModeByIdx = {};
+      back.remove();
+      setTab('semana');
+      let msg = 'Nova semana importada';
+      if (resumo.atualizadas || resumo.criadas) {
+        const partes = [];
+        if (resumo.atualizadas) partes.push(`${resumo.atualizadas} corrida${resumo.atualizadas>1?'s':''} atualizada${resumo.atualizadas>1?'s':''}`);
+        if (resumo.criadas) partes.push(`${resumo.criadas} nova${resumo.criadas>1?'s':''}`);
+        msg += ` · ${partes.join(', ')}`;
+      }
+      toast(msg, 'success');
+    } catch (e) {
+      console.error('Erro ao importar semana:', e);
+      toast('Erro ao importar: ' + e.message, 'error');
     }
-    toast(msg, 'success');
   });
 }
 
@@ -2846,8 +2877,14 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.1';
+const APP_VERSION = '3.2';
 const CHANGELOG = [
+  { v: '3.2', date: '2026-06-17', items: [
+    'Fix: tela preta ao importar JSON — proteção completa na inicialização',
+    'Recovery automático: dados corrompidos no localStorage são limpos sem perder histórico',
+    'Try/catch na importação de semana com validação de estrutura',
+    'Mensagem amigável de erro ao invés de tela preta em falhas críticas',
+  ]},
   { v: '3.1', date: '2026-06-17', items: [
     'Integração com Intervals.icu — envie treinos estruturados ao relógio (Amazfit T-Rex 3 Pro via Zepp)',
     'Campo de API Key nas configurações com link de ajuda',
@@ -3576,6 +3613,7 @@ function pickerInputSet(el, value, display) {
 function sincronizarStatusTreinos() {
   const logs = getLogs();
   const w = getWeek();
+  if (!w || !Array.isArray(w.treinos)) return;
   let mudou = false;
   w.treinos.forEach((t, idx) => {
     if (t.status === 'Concluído') {
@@ -3739,9 +3777,34 @@ function doUpdate() {
 }
 
 /* ========== INIT ========== */
-applyTheme(getSettings().theme);
-sincronizarStatusTreinos();
-render();
+(function startupRecovery() {
+  const chaves = [KEYS.week, AVALIACAO_KEY, SETTINGS_KEY, KEYS.logs, KEYS.history, KEYS.races];
+  for (const k of chaves) {
+    try {
+      const v = localStorage.getItem(k);
+      if (v) JSON.parse(v);
+    } catch (e) {
+      console.error('Dado corrompido detectado em ' + k + ', limpando:', e);
+      localStorage.removeItem(k);
+    }
+  }
+})();
+try {
+  applyTheme(getSettings().theme);
+  sincronizarStatusTreinos();
+  render();
+} catch (e) {
+  console.error('Erro crítico na inicialização:', e);
+  try { localStorage.removeItem(KEYS.week); } catch (_) {}
+  try {
+    document.getElementById('content').innerHTML = `
+      <div class="card alert-red" style="margin-top:20px;text-align:center">
+        <div style="font-size:18px;font-weight:700;margin-bottom:8px">Erro ao carregar</div>
+        <div style="font-size:14px;line-height:1.5;margin-bottom:12px">Ocorreu um erro ao carregar os dados. A semana atual foi redefinida, mas seu histórico e logs foram preservados.</div>
+        <button class="btn" onclick="location.reload()">Recarregar app</button>
+      </div>`;
+  } catch (_) { document.body.innerHTML = '<div style="padding:40px;text-align:center;font-family:sans-serif"><h2>Erro ao carregar</h2><p>Recarregue a página.</p><button onclick="location.reload()">Recarregar</button></div>'; }
+}
 scheduleDailyRefresh();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
