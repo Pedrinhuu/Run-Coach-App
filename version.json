@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.17-2124",
+  "versao": "2026.06.17-2159",
   "data": "2026-06-17",
-  "novidades": ["v3.1: Integração Intervals.icu — enviar treinos ao relógio via API"]
+  "novidades": ["v3.2: Fix tela preta após importação — startup recovery e validação defensiva"]
 }
