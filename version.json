@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.17-1854",
+  "versao": "2026.06.17-2124",
   "data": "2026-06-17",
-  "novidades": ["v3.0: Zonas visuais nos treinos, volume semanal, bug fixes"]
+  "novidades": ["v3.1: Integração Intervals.icu — enviar treinos ao relógio via API"]
 }
