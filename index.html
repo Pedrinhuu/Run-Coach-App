@@ -809,10 +809,23 @@ function renderSemana() {
 
   w.treinos.forEach((t, idx) => {
     const mode = trainModeByIdx[idx] || 'rua';
-    const data = t[mode];
+    const data = t[mode] || null;
+    const isDescanso = !t.rua && !t.esteira;
     const showRealocar = isPastPredicted(idx);
+
+    if (isDescanso) {
+      html += `<div class="card">
+        <div class="row between">
+          <div><h3>${t.dia} — ${t.tipo}</h3>${t.data_prevista ? `<div class="muted" style="font-size:11px;margin-top:2px">Data: ${fmtDateBR(t.data_prevista)}</div>`:''}</div>
+          ${statusBadge(t.status)}
+        </div>
+        <div class="muted" style="margin-top:4px;font-size:12px">${t.objetivo||''}</div>
+      </div>`;
+      return;
+    }
+
     const distKm = getDistanciaKm(t, mode);
-    const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data.duracao_total || ''].filter(Boolean).join(' · ');
+    const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
     html += `<div class="card">
       ${zoneBarHtml(data)}
       <div class="row between">
@@ -824,9 +837,9 @@ function renderSemana() {
         <button data-mode-idx="${idx}" data-mode="rua" class="${mode==='rua'?'active':''}">Rua</button>
         <button data-mode-idx="${idx}" data-mode="esteira" class="${mode==='esteira'?'active':''}">Esteira</button>
       </div>
-      <div class="train-section"><div class="row between"><div class="label">Aquecimento</div>${zoneBadgeHtml(data.zona_aquecimento)}</div><div class="text">${data.aquecimento||''}</div></div>
-      <div class="train-section"><div class="row between"><div class="label">Principal</div>${zoneBadgeHtml(data.zona_principal)}</div><div class="text">${data.principal||''}</div></div>
-      <div class="train-section"><div class="row between"><div class="label">Desaquecimento</div>${zoneBadgeHtml(data.zona_desaquecimento)}</div><div class="text">${data.desaquecimento||''}</div></div>
+      <div class="train-section"><div class="row between"><div class="label">Aquecimento</div>${zoneBadgeHtml(data?.zona_aquecimento)}</div><div class="text">${data?.aquecimento||''}</div></div>
+      <div class="train-section"><div class="row between"><div class="label">Principal</div>${zoneBadgeHtml(data?.zona_principal)}</div><div class="text">${data?.principal||''}</div></div>
+      <div class="train-section"><div class="row between"><div class="label">Desaquecimento</div>${zoneBadgeHtml(data?.zona_desaquecimento)}</div><div class="text">${data?.desaquecimento||''}</div></div>
       <div class="train-section"><div class="label">Duração total</div><div class="text num">${duracaoDistHtml}</div></div>
       <button class="btn start" data-action="start" data-idx="${idx}" style="margin-top:12px">▶ Iniciar treino</button>
       <button class="btn outline" data-action="copy" data-idx="${idx}" style="margin-top:8px;font-size:13px">📋 Copiar para Zepp</button>
@@ -2877,8 +2890,14 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.2';
+const APP_VERSION = '3.3';
 const CHANGELOG = [
+  { v: '3.3', date: '2026-06-17', items: [
+    'Fix: treinos de descanso (sem rua/esteira) não causam mais erro na renderização',
+    'Cards de descanso renderizados com layout simplificado (dia, tipo, status, objetivo)',
+    'Acesso defensivo com optional chaining em todas as propriedades de bloco de treino',
+    'Guard adicionado em openCopyModal para treinos sem dados',
+  ]},
   { v: '3.2', date: '2026-06-17', items: [
     'Fix: tela preta ao importar JSON — proteção completa na inicialização',
     'Recovery automático: dados corrompidos no localStorage são limpos sem perder histórico',
@@ -3275,6 +3294,7 @@ function openCopyModal(idx) {
   const t = w.treinos[idx];
   const modo = trainModeByIdx[idx] || 'rua';
   const data = t[modo];
+  if (!data) { toast('Treino sem dados para copiar.', 'error'); return; }
   const aqMin = extrairMinutos(data.aquecimento) || 5;
   const dqMin = extrairMinutos(data.desaquecimento) || 5;
   const totalMin = extrairTotalMinutos(data.duracao_total) || 0;
