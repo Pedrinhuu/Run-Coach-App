@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.17-2159",
+  "versao": "2026.06.17-2220",
   "data": "2026-06-17",
-  "novidades": ["v3.2: Fix tela preta após importação — startup recovery e validação defensiva"]
+  "novidades": ["v3.3: Fix renderização de treinos de descanso (sem rua/esteira)"]
 }
