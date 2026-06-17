@@ -146,6 +146,15 @@
   .zone-bar{height:4px;border-radius:2px;display:flex;overflow:hidden;margin-bottom:10px}
   .zone-bar-seg{height:100%}
   .volume-label{font-size:13px;color:var(--accent);font-weight:700;margin-top:4px}
+  .btn-intervals{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;background:var(--bg2);color:var(--text);border:1px solid var(--border);width:100%;justify-content:center;cursor:pointer;transition:opacity .2s}
+  .btn-intervals:active{opacity:.8}
+  .btn-intervals:disabled{opacity:.5;cursor:not-allowed}
+  .btn-intervals .emoji{font-size:16px}
+  .modal-status{padding:14px;border-radius:8px;font-size:14px;font-weight:600;text-align:center;margin-top:12px}
+  .modal-status.success{background:var(--alert-green-bg);color:var(--green)}
+  .modal-status.error{background:var(--alert-red-bg);color:var(--red)}
+  .modal-select-btn{flex:1;padding:14px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-size:15px;font-weight:600;cursor:pointer;text-align:center;transition:border-color .15s}
+  .modal-select-btn:active{border-color:var(--accent)}
   .stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
   .stat-box{background:var(--bg2);border-radius:8px;padding:12px 10px;text-align:center}
   .stat-box .stat-val{font-size:22px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
@@ -799,6 +808,9 @@ function renderSemana() {
       <div class="train-section"><div class="label">Duração total</div><div class="text num">${duracaoDistHtml}</div></div>
       <button class="btn start" data-action="start" data-idx="${idx}" style="margin-top:12px">▶ Iniciar treino</button>
       <button class="btn outline" data-action="copy" data-idx="${idx}" style="margin-top:8px;font-size:13px">📋 Copiar para Zepp</button>
+      ${getIntervalsKey()
+        ? `<button class="btn-intervals" data-action="send-intervals" data-idx="${idx}" style="margin-top:8px"><span class="emoji">⌚</span> Enviar para relógio</button>`
+        : `<button class="btn-intervals" data-action="config-intervals" style="margin-top:8px"><span class="emoji">⌚</span> Configurar relógio</button>`}
       <div class="btn-row" style="margin-top:10px">
         <button class="btn" data-action="log" data-idx="${idx}">Registrar</button>
         ${showRealocar ? `<button class="btn outline" data-action="realocar" data-idx="${idx}">Realocar</button>`:''}
@@ -1064,6 +1076,207 @@ function renderCalendario() {
     </div>`;
   }
   return html;
+}
+
+/* ========== INTERVALS.ICU ========== */
+const INTERVALS_KEY = 'runcoach_intervals_key';
+function getIntervalsKey() { return localStorage.getItem(INTERVALS_KEY) || ''; }
+function setIntervalsKey(key) { localStorage.setItem(INTERVALS_KEY, key); }
+
+function parseDuracaoParaSegundos(duracaoStr) {
+  if (!duracaoStr) return 0;
+  const match = duracaoStr.match(/(\d+)\s*min/);
+  return match ? parseInt(match[1]) * 60 : 0;
+}
+
+async function enviarParaIntervals(treino, modalidade, dataISO) {
+  const apiKey = getIntervalsKey();
+  if (!apiKey) return;
+
+  const bloco = treino[modalidade];
+  const avaliacao = load(AVALIACAO_KEY, null);
+  const zonas = (avaliacao && avaliacao.zonas) || {};
+
+  const linhas = [];
+
+  if (bloco.aquecimento) {
+    const zona = bloco.zona_aquecimento || '';
+    const infoZona = zona && zonas[zona.toLowerCase()]
+      ? ` (${zonas[zona.toLowerCase()].pace_central}/km)`
+      : '';
+    linhas.push(`Aquecimento${zona ? ' ' + zona : ''}${infoZona}: ${bloco.aquecimento}`);
+  }
+
+  if (bloco.principal) {
+    const zona = bloco.zona_principal || '';
+    const infoZona = zona && zonas[zona.toLowerCase()]
+      ? ` (${zonas[zona.toLowerCase()].pace_min} - ${zonas[zona.toLowerCase()].pace_max}/km)`
+      : '';
+    linhas.push(`Principal${zona ? ' ' + zona : ''}${infoZona}: ${bloco.principal}`);
+
+    if (bloco.intervalos) {
+      const { ciclos, fases } = bloco.intervalos;
+      linhas.push(`→ ${ciclos} ciclos: ` +
+        fases.map(f => `${f.nome} ${f.duracao_segundos}s @ ${f.referencia}`).join(' + '));
+    }
+  }
+
+  if (bloco.desaquecimento) {
+    const zona = bloco.zona_desaquecimento || '';
+    linhas.push(`Desaquecimento${zona ? ' ' + zona : ''}: ${bloco.desaquecimento}`);
+  }
+
+  if (bloco.duracao_total) linhas.push(`Duração: ${bloco.duracao_total}`);
+  if (bloco.distancia_km) linhas.push(`Distância: ${bloco.distancia_km} km`);
+
+  const descricao = linhas.join('\n');
+  const duracaoSegundos = parseDuracaoParaSegundos(bloco.duracao_total);
+
+  const payload = {
+    category: 'WORKOUT',
+    start_date_local: dataISO,
+    name: treino.tipo,
+    type: 'Run',
+    moving_time: duracaoSegundos,
+    description: descricao
+  };
+
+  const response = await fetch('https://intervals.icu/api/v1/athlete/0/events', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + btoa('API_KEY:' + apiKey),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const status = response.status;
+    if (status === 401 || status === 403) throw new Error('auth');
+    throw new Error('server');
+  }
+
+  return await response.json();
+}
+
+function openEnviarRelogioModal(idx) {
+  const w = getWeek();
+  const t = w.treinos[idx];
+  const temRua = t.rua && (t.rua.aquecimento || t.rua.principal);
+  const temEsteira = t.esteira && (t.esteira.aquecimento || t.esteira.principal);
+  const temAmbos = temRua && temEsteira;
+
+  if (temAmbos) {
+    openModalidadeModal(idx);
+  } else {
+    const modalidade = temEsteira ? 'esteira' : 'rua';
+    openEnviarConfirmModal(idx, modalidade);
+  }
+}
+
+function openModalidadeModal(idx) {
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Modalidade do treino</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:14px">Qual modalidade deseja enviar ao relógio?</p>
+    <div class="btn-row" style="gap:10px">
+      <button class="modal-select-btn" id="modRua">🏃 Rua</button>
+      <button class="modal-select-btn" id="modEsteira">🏃 Esteira</button>
+    </div>
+    <button class="btn outline" id="modCancel" style="margin-top:12px">Cancelar</button>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#modCancel').addEventListener('click', () => back.remove());
+  back.querySelector('#modRua').addEventListener('click', () => { back.remove(); openEnviarConfirmModal(idx, 'rua'); });
+  back.querySelector('#modEsteira').addEventListener('click', () => { back.remove(); openEnviarConfirmModal(idx, 'esteira'); });
+}
+
+function openEnviarConfirmModal(idx, modalidade) {
+  const w = getWeek();
+  const t = w.treinos[idx];
+  const bloco = t[modalidade];
+  const dataDefault = predictedDate(idx);
+
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Enviar para relógio</h2>
+    <div style="margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700">${escapeHtml(t.tipo)}</div>
+      <div class="muted" style="font-size:13px;margin-top:4px">${escapeHtml(modalidade === 'esteira' ? '🏃 Esteira' : '🏃 Rua')}${bloco.duracao_total ? ' · ' + escapeHtml(bloco.duracao_total) : ''}</div>
+    </div>
+    <div class="field">
+      <label>Data do treino</label>
+      <input type="date" id="enviarData" value="${dataDefault}">
+    </div>
+    <div class="btn-row">
+      <button class="btn outline" id="enviarCancel">Cancelar</button>
+      <button class="btn" id="enviarConfirm">⌚ Enviar</button>
+    </div>
+    <div id="enviarStatus" style="display:none"></div>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#enviarCancel').addEventListener('click', () => back.remove());
+
+  const btnConfirm = back.querySelector('#enviarConfirm');
+  const statusDiv = back.querySelector('#enviarStatus');
+
+  btnConfirm.addEventListener('click', async () => {
+    const dataISO = back.querySelector('#enviarData').value;
+    if (!dataISO) { toast('Selecione uma data', 'error'); return; }
+
+    btnConfirm.disabled = true;
+    btnConfirm.textContent = '⏳ Enviando...';
+    statusDiv.style.display = 'none';
+
+    try {
+      await enviarParaIntervals(t, modalidade, dataISO);
+      statusDiv.className = 'modal-status success';
+      statusDiv.textContent = '✅ Treino enviado! Verifique o relógio em alguns minutos.';
+      statusDiv.style.display = 'block';
+      setTimeout(() => back.remove(), 3000);
+    } catch (err) {
+      btnConfirm.disabled = false;
+      btnConfirm.textContent = '⌚ Enviar';
+      statusDiv.style.display = 'block';
+
+      if (err.message === 'auth') {
+        statusDiv.className = 'modal-status error';
+        statusDiv.innerHTML = '❌ API key inválida — <u style="cursor:pointer" id="goToSettings">verifique nas configurações</u>';
+        statusDiv.querySelector('#goToSettings').addEventListener('click', () => { back.remove(); openSettingsModal(); });
+      } else if (err.message === 'server') {
+        statusDiv.className = 'modal-status error';
+        statusDiv.textContent = '❌ Erro ao enviar — tente novamente';
+      } else {
+        statusDiv.className = 'modal-status error';
+        statusDiv.textContent = '❌ Bloqueio de segurança do navegador (CORS). Tente pelo Chrome no Android ou acesse o app pelo navegador do celular.';
+        console.error('Intervals.icu send error (likely CORS):', err);
+      }
+    }
+  });
+}
+
+function openIntervalsHelpModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Como obter sua API Key</h2>
+    <ol class="help-list" style="margin-bottom:14px">
+      <li>Acesse <strong>intervals.icu/settings</strong> no navegador</li>
+      <li>Role até <strong>Developer Settings</strong></li>
+      <li>Clique em <strong>GERAR</strong></li>
+      <li>Copie a chave gerada</li>
+      <li>Cole no campo "API Key" nas configurações do app</li>
+    </ol>
+    <p class="muted" style="font-size:12px;margin-bottom:14px">A chave é salva apenas no seu celular e usada somente para enviar treinos ao Intervals.icu.</p>
+    <button class="btn" id="helpIntClose">Entendi</button>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#helpIntClose').addEventListener('click', () => back.remove());
 }
 
 /* ========== TAB 5: AVALIAÇÃO ========== */
@@ -1499,6 +1712,8 @@ function attachHandlers() {
   document.querySelectorAll('[data-action="realocar"]').forEach(b => b.addEventListener('click', () => openRealocarModal(parseInt(b.dataset.idx))));
   document.querySelectorAll('[data-action="start"]').forEach(b => b.addEventListener('click', () => iniciarTreino(parseInt(b.dataset.idx))));
   document.querySelectorAll('[data-action="copy"]').forEach(b => b.addEventListener('click', () => openCopyModal(parseInt(b.dataset.idx))));
+  document.querySelectorAll('[data-action="send-intervals"]').forEach(b => b.addEventListener('click', () => openEnviarRelogioModal(parseInt(b.dataset.idx))));
+  document.querySelectorAll('[data-action="config-intervals"]').forEach(b => b.addEventListener('click', () => openSettingsModal()));
   const btnHelp = document.getElementById('btnHelp');
   if (btnHelp) btnHelp.addEventListener('click', openHelpModal);
   const btnSettings = document.getElementById('btnSettings');
@@ -2631,8 +2846,16 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.0';
+const APP_VERSION = '3.1';
 const CHANGELOG = [
+  { v: '3.1', date: '2026-06-17', items: [
+    'Integração com Intervals.icu — envie treinos estruturados ao relógio (Amazfit T-Rex 3 Pro via Zepp)',
+    'Campo de API Key nas configurações com link de ajuda',
+    'Botão "Enviar para relógio" nos cards de treino',
+    'Seleção de modalidade (rua/esteira) e data antes do envio',
+    'Descrição enriquecida com zonas e pace enviada ao Intervals.icu',
+    'Tratamento de erros: autenticação, rede, CORS',
+  ]},
   { v: '3.0', date: '2026-06-17', items: [
     'Fix: pace "5:60" corrigido para arredondamento correto (Bug kmhToPace)',
     'Fix: cores das zonas Z1-Z5 corrigidas (azul→verde→amarelo→laranja→vermelho)',
@@ -2920,6 +3143,16 @@ function openSettingsModal() {
       </div>
       <div class="switch ${s.mute ? 'on' : ''}" id="swMute" role="switch" aria-checked="${s.mute}"></div>
     </div>
+    <div style="padding:14px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <div class="label" style="font-size:14px;font-weight:600">Intervals.icu API Key</div>
+        <button class="help-btn" id="btnIntervalsHelp" style="width:22px;height:22px;font-size:12px" aria-label="Ajuda">?</button>
+      </div>
+      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:8px">Conecte ao Intervals.icu para enviar treinos ao relógio</div>
+      <input type="password" id="setIntervalsKey" placeholder="Cole sua API key aqui" value="${escapeHtml(getIntervalsKey())}" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);font-family:inherit;font-size:14px;background:var(--card);color:var(--text)">
+      <button class="btn" id="btnSaveIntervalsKey" style="margin-top:8px;font-size:13px;padding:10px">Salvar chave</button>
+      <div id="intervalsKeyFeedback" style="display:none;font-size:13px;font-weight:600;margin-top:6px;text-align:center"></div>
+    </div>
     <div class="setting-row">
       <div>
         <div class="label">Histórico de versões</div>
@@ -2956,6 +3189,21 @@ function openSettingsModal() {
     const next = { ...cur, mute: !cur.mute };
     setSettings(next);
     back.querySelector('#swMute').classList.toggle('on', next.mute);
+  });
+  back.querySelector('#btnIntervalsHelp').addEventListener('click', () => openIntervalsHelpModal());
+  back.querySelector('#btnSaveIntervalsKey').addEventListener('click', () => {
+    const val = back.querySelector('#setIntervalsKey').value.trim();
+    setIntervalsKey(val);
+    const fb = back.querySelector('#intervalsKeyFeedback');
+    fb.style.display = 'block';
+    if (val) {
+      fb.style.color = 'var(--green)';
+      fb.textContent = '✅ Chave salva com sucesso';
+    } else {
+      fb.style.color = 'var(--muted)';
+      fb.textContent = 'Chave removida';
+    }
+    setTimeout(() => { fb.style.display = 'none'; }, 2500);
   });
 }
 
