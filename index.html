@@ -121,7 +121,7 @@
   .help-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:#fff;color:var(--text);font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
   .bell-wrap{position:relative;display:inline-flex}
   .bell-wrap .bell-dot{position:absolute;top:-2px;right:-2px;width:14px;height:14px;background:var(--red);border-radius:50%;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;line-height:1}
-  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:300;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:90%;text-align:center}
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:300;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:90%;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
   .toast.error{background:var(--red)}
   .toast.success{background:var(--green)}
@@ -733,6 +733,19 @@ function renderResumeBanner() {
   </div>`;
 }
 
+function calcAderencia(w) {
+  const previstos = (w.treinos || []).filter(t => t.tipo?.toLowerCase() !== 'descanso').length;
+  const concluidos = (w.treinos || []).filter(t => t.tipo?.toLowerCase() !== 'descanso' && t.status === 'Concluído').length;
+  return { previstos, concluidos, pct: previstos > 0 ? Math.round((concluidos / previstos) * 100) : null };
+}
+
+function aderenciaHtml(w) {
+  const { previstos, concluidos, pct } = calcAderencia(w);
+  if (pct === null) return '';
+  const cor = pct >= 80 ? '#22c55e' : pct >= 50 ? '#eab308' : '#ef4444';
+  return `<div style="font-size:13px;font-weight:600;color:${cor}">Aderência: ${concluidos}/${previstos} treinos (${pct}%)</div>`;
+}
+
 function renderSemana() {
   const s = getSettings();
   const nome = (s.name || '').trim();
@@ -801,6 +814,7 @@ function renderSemana() {
     </div>
     <div class="focus">${w.foco_da_semana || ''}</div>
     ${(() => { const vol = calcVolumeSemanal(w); return vol > 0 ? `<div class="volume-label">Volume: ${vol.toFixed(1)} km</div>` : ''; })()}
+    ${aderenciaHtml(w)}
   </div>
   ${greetingHtml}
   ${renderResumeBanner()}`;
@@ -1977,7 +1991,37 @@ function openLogModal(idx, existingLog) {
     const w2 = getWeek(); w2.treinos[idx].status = 'Concluído'; w2.treinos[idx].data_efetiva = data; setWeek(w2);
     back.remove();
     render();
+    openPSEModal(log.ts);
   });
+}
+
+function openPSEModal(logTs) {
+  const PSE_COLORS = { 1:'#3b82f6',2:'#3b82f6',3:'#22c55e',4:'#22c55e',5:'#eab308',6:'#eab308',7:'#f97316',8:'#f97316',9:'#ef4444',10:'#ef4444' };
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  let btns = '';
+  for (let n = 1; n <= 10; n++) {
+    btns += `<button class="pse-btn" data-pse="${n}" style="background:${PSE_COLORS[n]};color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;padding:12px 0;cursor:pointer">${n}</button>`;
+  }
+  back.innerHTML = `<div class="modal" style="text-align:center">
+    <h2>Como foi o treino?</h2>
+    <p class="muted" style="font-size:12px;line-height:1.5;margin-bottom:16px">PSE — Percepção Subjetiva de Esforço: o quanto o treino foi difícil para você, de 1 (muito fácil) a 10 (máximo).</p>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px">${btns}</div>
+    <button class="btn outline" id="pseSkip" style="font-size:13px;padding:8px 20px;opacity:.7">Pular</button>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) { back.remove(); } });
+  back.querySelectorAll('.pse-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pse = parseInt(btn.dataset.pse);
+      const logs = getLogs();
+      const l = logs.find(x => x.ts === logTs);
+      if (l) { l.pse = pse; setLogs(logs); }
+      back.remove();
+      toast('PSE registrado: ' + pse, 'success');
+    });
+  });
+  back.querySelector('#pseSkip').addEventListener('click', () => { back.remove(); });
 }
 
 function deletarLog(ts) {
@@ -2919,8 +2963,13 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.8';
+const APP_VERSION = '3.9';
 const CHANGELOG = [
+  { v: '3.9', date: '2026-06-18', items: [
+    'Toast de confirmação com estilo legível em ambos os temas',
+    'PSE (Percepção Subjetiva de Esforço) após concluir treino',
+    'Aderência semanal exibida no topo da tela Semana',
+  ]},
   { v: '3.8', date: '2026-06-18', items: [
     'Export/Import de backup completo nas Configurações',
     'Chave de API do Intervals.icu nunca incluída no backup',
