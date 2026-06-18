@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.18-1945",
+  "versao": "2026.06.18-2001",
   "data": "2026-06-18",
-  "novidades": ["v4.0.2: Cores dos cards Home e gráfico de carga dinâmico"]
+  "novidades": ["v4.0.3: Fix gráfico de carga: dedup semana atual e labels com volume"]
 }
