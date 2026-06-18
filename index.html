@@ -826,16 +826,9 @@ function renderSemana() {
   );
 
   const DIAS_SEMANA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-  const hojeNome = DIAS_SEMANA[new Date().getDay()];
-  const hojeIdx = treinosAtivos.findIndex(({ t }) => t.dia === hojeNome);
-  let proxIdx = treinosAtivos.findIndex(({ t }) => {
-    if (t.status !== 'Pendente') return false;
-    return DIAS_SEMANA.indexOf(t.dia) >= new Date().getDay();
-  });
-  if (proxIdx === hojeIdx && proxIdx !== -1) {
-    const after = treinosAtivos.findIndex(({ t }, ai) => ai > proxIdx && t.status === 'Pendente' && DIAS_SEMANA.indexOf(t.dia) > new Date().getDay());
-    proxIdx = after !== -1 ? after : -1;
-  }
+  const proxIdx = treinosAtivos.findIndex(({ t }) =>
+    t.status === 'Pendente' && DIAS_SEMANA.indexOf(t.dia) >= new Date().getDay()
+  );
 
   if (treinosAtivos.length === 0) {
     html += `<div class="empty">Nenhum treino programado para esta semana</div>`;
@@ -846,12 +839,8 @@ function renderSemana() {
     const data = t[mode] || null;
     const showRealocar = isPastPredicted(idx);
 
-    const isHoje = arrIdx === hojeIdx;
-    const isProx = arrIdx === proxIdx && !isHoje;
-    const cardBorder = (isHoje || isProx) ? 'border:1px solid #f97316' : '';
-    let dayBadge = '';
-    if (isHoje) dayBadge = '<span style="background:#f97316;color:#fff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;margin-left:6px">Hoje</span>';
-    else if (isProx) dayBadge = '<span style="color:#f97316;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid #f97316;margin-left:6px">Próximo</span>';
+    const isNextPending = arrIdx === proxIdx;
+    const cardBorder = isNextPending ? 'border:1px solid #f97316' : '';
 
     const distKm = getDistanciaKm(t, mode);
     const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
@@ -859,7 +848,7 @@ function renderSemana() {
       ${zoneBarHtml(data)}
       <div class="row between">
         <div><h3>${t.dia} — ${t.tipo}</h3>${t.data_prevista ? `<div class="muted" style="font-size:11px;margin-top:2px">Data: ${fmtDateBR(t.data_prevista)}</div>`:''}</div>
-        <div style="display:flex;align-items:center;gap:4px">${dayBadge}${statusBadge(t.status)}</div>
+        ${statusBadge(t.status)}
       </div>
       <div class="muted" style="margin-top:4px;font-size:12px">${t.objetivo||''}</div>
       <div class="toggle">
@@ -871,7 +860,6 @@ function renderSemana() {
       <div class="train-section"><div class="row between"><div class="label">Desaquecimento</div>${zoneBadgeHtml(data?.zona_desaquecimento)}</div><div class="text">${data?.desaquecimento||''}</div></div>
       <div class="train-section"><div class="label">Duração total</div><div class="text num">${duracaoDistHtml}</div></div>
       <button class="btn start" data-action="start" data-idx="${idx}" style="margin-top:12px">▶ Iniciar treino</button>
-      <button class="btn outline" data-action="copy" data-idx="${idx}" style="margin-top:8px;font-size:13px">📋 Copiar para Zepp</button>
       ${getIntervalsKey()
         ? `<button class="btn-intervals" data-action="send-intervals" data-idx="${idx}" style="margin-top:8px"><span class="emoji">⌚</span> Enviar para relógio</button>`
         : `<button class="btn-intervals" data-action="config-intervals" style="margin-top:8px"><span class="emoji">⌚</span> Configurar relógio</button>`}
@@ -1808,7 +1796,6 @@ function attachHandlers() {
   document.querySelectorAll('[data-action="log"]').forEach(b => b.addEventListener('click', () => openLogModal(parseInt(b.dataset.idx))));
   document.querySelectorAll('[data-action="realocar"]').forEach(b => b.addEventListener('click', () => openRealocarModal(parseInt(b.dataset.idx))));
   document.querySelectorAll('[data-action="start"]').forEach(b => b.addEventListener('click', () => iniciarTreino(parseInt(b.dataset.idx))));
-  document.querySelectorAll('[data-action="copy"]').forEach(b => b.addEventListener('click', () => openCopyModal(parseInt(b.dataset.idx))));
   document.querySelectorAll('[data-action="send-intervals"]').forEach(b => b.addEventListener('click', () => openEnviarRelogioModal(parseInt(b.dataset.idx))));
   document.querySelectorAll('[data-action="config-intervals"]').forEach(b => b.addEventListener('click', () => openSettingsModal()));
   const btnHelp = document.getElementById('btnHelp');
@@ -2982,11 +2969,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.10';
+const APP_VERSION = '3.11';
 const CHANGELOG = [
-  { v: '3.10', date: '2026-06-18', items: [
-    'Badge "Hoje" e "Próximo" nos cards de treino da semana',
-    'Destaque visual com borda laranja no treino do dia',
+  { v: '3.11', date: '2026-06-18', items: [
+    'Removido botão "Copiar para Zepp" (integração agora via Intervals.icu)',
+    'Removido badge "Hoje"; borda laranja marca o próximo treino pendente',
   ]},
   { v: '3.9', date: '2026-06-18', items: [
     'Toast de confirmação com estilo legível em ambos os temas',
