@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.18-1157",
+  "versao": "2026.06.18-1214",
   "data": "2026-06-18",
-  "novidades": ["v3.6: Workout steps estruturados para Intervals.icu/Amazfit"]
+  "novidades": ["v3.7: Fix buildIntervalsDescription — gerar steps sem exigir zonas"]
 }
