@@ -825,22 +825,41 @@ function renderSemana() {
     t.tipo?.toLowerCase() !== 'descanso' && (t.rua || t.esteira)
   );
 
+  const DIAS_SEMANA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const hojeNome = DIAS_SEMANA[new Date().getDay()];
+  const hojeIdx = treinosAtivos.findIndex(({ t }) => t.dia === hojeNome);
+  let proxIdx = treinosAtivos.findIndex(({ t }) => {
+    if (t.status !== 'Pendente') return false;
+    return DIAS_SEMANA.indexOf(t.dia) >= new Date().getDay();
+  });
+  if (proxIdx === hojeIdx && proxIdx !== -1) {
+    const after = treinosAtivos.findIndex(({ t }, ai) => ai > proxIdx && t.status === 'Pendente' && DIAS_SEMANA.indexOf(t.dia) > new Date().getDay());
+    proxIdx = after !== -1 ? after : -1;
+  }
+
   if (treinosAtivos.length === 0) {
     html += `<div class="empty">Nenhum treino programado para esta semana</div>`;
   }
 
-  treinosAtivos.forEach(({ t, idx }) => {
+  treinosAtivos.forEach(({ t, idx }, arrIdx) => {
     const mode = trainModeByIdx[idx] || 'rua';
     const data = t[mode] || null;
     const showRealocar = isPastPredicted(idx);
 
+    const isHoje = arrIdx === hojeIdx;
+    const isProx = arrIdx === proxIdx && !isHoje;
+    const cardBorder = (isHoje || isProx) ? 'border:1px solid #f97316' : '';
+    let dayBadge = '';
+    if (isHoje) dayBadge = '<span style="background:#f97316;color:#fff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;margin-left:6px">Hoje</span>';
+    else if (isProx) dayBadge = '<span style="color:#f97316;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid #f97316;margin-left:6px">Próximo</span>';
+
     const distKm = getDistanciaKm(t, mode);
     const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
-    html += `<div class="card">
+    html += `<div class="card" style="${cardBorder}">
       ${zoneBarHtml(data)}
       <div class="row between">
         <div><h3>${t.dia} — ${t.tipo}</h3>${t.data_prevista ? `<div class="muted" style="font-size:11px;margin-top:2px">Data: ${fmtDateBR(t.data_prevista)}</div>`:''}</div>
-        ${statusBadge(t.status)}
+        <div style="display:flex;align-items:center;gap:4px">${dayBadge}${statusBadge(t.status)}</div>
       </div>
       <div class="muted" style="margin-top:4px;font-size:12px">${t.objetivo||''}</div>
       <div class="toggle">
@@ -2963,8 +2982,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.9';
+const APP_VERSION = '3.10';
 const CHANGELOG = [
+  { v: '3.10', date: '2026-06-18', items: [
+    'Badge "Hoje" e "Próximo" nos cards de treino da semana',
+    'Destaque visual com borda laranja no treino do dia',
+  ]},
   { v: '3.9', date: '2026-06-18', items: [
     'Toast de confirmação com estilo legível em ambos os temas',
     'PSE (Percepção Subjetiva de Esforço) após concluir treino',
