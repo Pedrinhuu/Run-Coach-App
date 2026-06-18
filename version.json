@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.18-1252",
+  "versao": "2026.06.18-1309",
   "data": "2026-06-18",
-  "novidades": ["v3.8: Export/Import backup completo nas Configurações"]
+  "novidades": ["fix: exportBackup usa try/catch ao ler chaves do localStorage"]
 }
