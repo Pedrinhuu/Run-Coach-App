@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.18-1309",
+  "versao": "2026.06.18-1326",
   "data": "2026-06-18",
-  "novidades": ["fix: exportBackup usa try/catch ao ler chaves do localStorage"]
+  "novidades": ["v3.9: Toast fix, PSE pós-treino e aderência semanal"]
 }
