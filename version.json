@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.17-2220",
-  "data": "2026-06-17",
-  "novidades": ["v3.3: Fix renderização de treinos de descanso (sem rua/esteira)"]
+  "versao": "2026.06.18-0116",
+  "data": "2026-06-18",
+  "novidades": ["v3.4: Fix 422 Intervals.icu + ocultar dias de descanso da aba Semana"]
 }
