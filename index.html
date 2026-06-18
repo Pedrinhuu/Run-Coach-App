@@ -1167,18 +1167,19 @@ async function enviarParaIntervals(treino, modalidade, dataISO) {
   const descricao = linhas.join('\n');
   const duracaoSegundos = parseDuracaoParaSegundos(bloco.duracao_total);
 
-  const payload = {
+  const payload = [{
     category: 'WORKOUT',
-    start_date_local: dataISO,
+    start_date_local: dataISO + 'T00:00:00',
     name: treino.tipo,
     type: 'Run',
     moving_time: duracaoSegundos,
-    description: descricao
-  };
+    description: descricao,
+    external_id: 'runcoach_' + treino.dia + '_' + dataISO
+  }];
 
   console.log('Payload Intervals.icu:', JSON.stringify(payload));
 
-  const response = await fetch('https://intervals.icu/api/v1/athlete/0/events', {
+  const response = await fetch('https://intervals.icu/api/v1/athlete/0/events/bulk?upsert=true', {
     method: 'POST',
     headers: {
       'Authorization': 'Basic ' + btoa('API_KEY:' + apiKey),
@@ -2899,8 +2900,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.4';
+const APP_VERSION = '3.5';
 const CHANGELOG = [
+  { v: '3.5', date: '2026-06-17', items: [
+    'Fix: erro 422 Intervals.icu — endpoint bulk, data com horário, payload como array',
+    'Upsert com external_id evita duplicatas ao reenviar o mesmo treino',
+  ]},
   { v: '3.4', date: '2026-06-17', items: [
     'Fix: erro 422 ao enviar para Intervals.icu — payload e data robustecidos',
     'parseDuracaoParaSegundos agora aceita formatos com horas (ex: "1h 30 min")',
