@@ -1125,11 +1125,11 @@ function parseDuracaoParaSegundos(duracaoStr) {
 }
 
 function buildIntervalsDescription(bloco, zonas) {
-  if (!bloco || !zonas || Object.keys(zonas).length === 0) return null;
+  if (!bloco) return null;
 
   const zoneNum = (str) => str?.replace(/\D/g, '') || '2';
   const paceCue = (z) => {
-    const data = zonas[z?.toLowerCase()];
+    const data = zonas?.[z?.toLowerCase()];
     return data ? ` (${data.pace_min}-${data.pace_max}/km)` : '';
   };
   const stepLine = (min, zona) => `- ${min}m Z${zoneNum(zona)} HR${paceCue(zona)}`;
@@ -2919,8 +2919,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.6';
+const APP_VERSION = '3.7';
 const CHANGELOG = [
+  { v: '3.7', date: '2026-06-18', items: [
+    'Fix: workout steps agora gerados mesmo sem avaliação de zonas preenchida',
+  ]},
   { v: '3.6', date: '2026-06-18', items: [
     'Treinos enviados ao Intervals.icu agora geram workout steps estruturados',
     'Relógio recebe zonas de FC (Z1-Z5 HR) com pace como referência visual',
