@@ -807,22 +807,18 @@ function renderSemana() {
   if (w.alerta_coach) html += `<div class="card alert-red"><strong>Atenção do coach:</strong><br>${w.alerta_coach}</div>`;
   if (w.observacao_coach) html += `<div class="card" style="background:var(--bg2);border:none"><div class="muted" style="text-transform:uppercase;font-size:11px;letter-spacing:.5px;margin-bottom:4px">Observação do coach</div>${w.observacao_coach}</div>`;
 
-  w.treinos.forEach((t, idx) => {
+  const treinosAtivos = w.treinos.map((t, idx) => ({ t, idx })).filter(({ t }) =>
+    t.tipo?.toLowerCase() !== 'descanso' && (t.rua || t.esteira)
+  );
+
+  if (treinosAtivos.length === 0) {
+    html += `<div class="empty">Nenhum treino programado para esta semana</div>`;
+  }
+
+  treinosAtivos.forEach(({ t, idx }) => {
     const mode = trainModeByIdx[idx] || 'rua';
     const data = t[mode] || null;
-    const isDescanso = !t.rua && !t.esteira;
     const showRealocar = isPastPredicted(idx);
-
-    if (isDescanso) {
-      html += `<div class="card">
-        <div class="row between">
-          <div><h3>${t.dia} — ${t.tipo}</h3>${t.data_prevista ? `<div class="muted" style="font-size:11px;margin-top:2px">Data: ${fmtDateBR(t.data_prevista)}</div>`:''}</div>
-          ${statusBadge(t.status)}
-        </div>
-        <div class="muted" style="margin-top:4px;font-size:12px">${t.objetivo||''}</div>
-      </div>`;
-      return;
-    }
 
     const distKm = getDistanciaKm(t, mode);
     const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
@@ -1119,9 +1115,13 @@ function getIntervalsKey() { return localStorage.getItem(INTERVALS_KEY) || ''; }
 function setIntervalsKey(key) { localStorage.setItem(INTERVALS_KEY, key); }
 
 function parseDuracaoParaSegundos(duracaoStr) {
-  if (!duracaoStr) return 0;
-  const match = duracaoStr.match(/(\d+)\s*min/);
-  return match ? parseInt(match[1]) * 60 : 0;
+  if (!duracaoStr) return 1800;
+  const matchHora = duracaoStr.match(/(\d+)\s*h/);
+  const matchMin = duracaoStr.match(/(\d+)\s*min/);
+  let segundos = 0;
+  if (matchHora) segundos += parseInt(matchHora[1]) * 3600;
+  if (matchMin) segundos += parseInt(matchMin[1]) * 60;
+  return segundos > 0 ? segundos : 1800;
 }
 
 async function enviarParaIntervals(treino, modalidade, dataISO) {
@@ -1176,6 +1176,8 @@ async function enviarParaIntervals(treino, modalidade, dataISO) {
     description: descricao
   };
 
+  console.log('Payload Intervals.icu:', JSON.stringify(payload));
+
   const response = await fetch('https://intervals.icu/api/v1/athlete/0/events', {
     method: 'POST',
     headers: {
@@ -1188,6 +1190,7 @@ async function enviarParaIntervals(treino, modalidade, dataISO) {
   if (!response.ok) {
     const status = response.status;
     if (status === 401 || status === 403) throw new Error('auth');
+    if (status === 422) throw new Error('invalid');
     throw new Error('server');
   }
 
@@ -1260,7 +1263,10 @@ function openEnviarConfirmModal(idx, modalidade) {
   const statusDiv = back.querySelector('#enviarStatus');
 
   btnConfirm.addEventListener('click', async () => {
-    const dataISO = back.querySelector('#enviarData').value;
+    const dataInput = back.querySelector('#enviarData');
+    const dataISO = dataInput.value
+      ? new Date(dataInput.value + 'T12:00:00').toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
     if (!dataISO) { toast('Selecione uma data', 'error'); return; }
 
     btnConfirm.disabled = true;
@@ -1282,6 +1288,9 @@ function openEnviarConfirmModal(idx, modalidade) {
         statusDiv.className = 'modal-status error';
         statusDiv.innerHTML = '❌ API key inválida — <u style="cursor:pointer" id="goToSettings">verifique nas configurações</u>';
         statusDiv.querySelector('#goToSettings').addEventListener('click', () => { back.remove(); openSettingsModal(); });
+      } else if (err.message === 'invalid') {
+        statusDiv.className = 'modal-status error';
+        statusDiv.textContent = '❌ Dados inválidos — verifique se a data está correta e tente novamente';
       } else if (err.message === 'server') {
         statusDiv.className = 'modal-status error';
         statusDiv.textContent = '❌ Erro ao enviar — tente novamente';
@@ -2890,11 +2899,16 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.3';
+const APP_VERSION = '3.4';
 const CHANGELOG = [
+  { v: '3.4', date: '2026-06-17', items: [
+    'Fix: erro 422 ao enviar para Intervals.icu — payload e data robustecidos',
+    'parseDuracaoParaSegundos agora aceita formatos com horas (ex: "1h 30 min")',
+    'Tratamento específico para erro 422 com mensagem clara ao usuário',
+    'Dias de descanso ocultados da aba Semana — apenas treinos ativos aparecem',
+  ]},
   { v: '3.3', date: '2026-06-17', items: [
     'Fix: treinos de descanso (sem rua/esteira) não causam mais erro na renderização',
-    'Cards de descanso renderizados com layout simplificado (dia, tipo, status, objetivo)',
     'Acesso defensivo com optional chaining em todas as propriedades de bloco de treino',
     'Guard adicionado em openCopyModal para treinos sem dados',
   ]},
