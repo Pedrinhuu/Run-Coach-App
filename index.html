@@ -251,7 +251,11 @@
   <main class="content" id="content"></main>
   <nav class="bottom-nav">
     <div class="bottom-nav-inner">
-      <button class="nav-btn active" data-tab="semana">
+      <button class="nav-btn active" data-tab="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10"/></svg>
+        Home
+      </button>
+      <button class="nav-btn" data-tab="semana">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
         Semana
       </button>
@@ -262,10 +266,6 @@
       <button class="nav-btn" data-tab="metricas">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
         Métricas
-      </button>
-      <button class="nav-btn" data-tab="calendario">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
-        Calendário
       </button>
       <button class="nav-btn" data-tab="avaliacao">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
@@ -516,9 +516,10 @@ function detectTriggers() {
 }
 
 /* ========== ROUTER ========== */
-let currentTab = 'semana';
+let currentTab = 'home';
 let trainModeByIdx = {};
-const TAB_ORDER = ['semana', 'historico', 'metricas', 'calendario', 'avaliacao'];
+let historicoSubTab = 'treinos';
+const TAB_ORDER = ['home', 'semana', 'historico', 'metricas', 'avaliacao'];
 
 function setTab(name) {
   currentTab = name;
@@ -562,12 +563,139 @@ document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', (
 function render() {
   updateProgressBar();
   const el = document.getElementById('content');
-  if (currentTab === 'semana') el.innerHTML = renderSemana();
+  if (currentTab === 'home') el.innerHTML = renderHome();
+  else if (currentTab === 'semana') el.innerHTML = renderSemana();
   else if (currentTab === 'historico') el.innerHTML = renderHistorico();
   else if (currentTab === 'metricas') el.innerHTML = renderMetricas();
-  else if (currentTab === 'calendario') el.innerHTML = renderCalendario();
   else if (currentTab === 'avaliacao') el.innerHTML = renderAvaliacao();
   attachHandlers();
+}
+
+/* ========== TAB 0: HOME ========== */
+function renderHome() {
+  const s = getSettings();
+  const nome = (s.name || '').trim();
+  const frase = fraseDoDia();
+  const vers = versiculoDoDia();
+  const w = getWeek();
+  const hasWeek = !!localStorage.getItem(KEYS.week);
+
+  let html = `<div class="row between" style="margin-bottom:12px">
+    <div></div>
+    <div class="header-actions">
+      <span class="bell-wrap" id="bellWrap"><button class="help-btn" id="btnBell" aria-label="Atualização">🔔</button><span class="bell-dot" id="bellDot" style="display:none">1</span></span>
+      <button class="help-btn" id="btnSettings" aria-label="Configurações">⚙</button>
+      <button class="help-btn" id="btnHelp" aria-label="Ajuda">?</button>
+    </div>
+  </div>`;
+
+  const h = new Date().getHours();
+  const greeting = h >= 5 && h < 12 ? 'Bom dia' : h >= 12 && h < 18 ? 'Boa tarde' : 'Boa noite';
+  const hoje = new Date();
+  const dataFull = hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const dataCapitalized = dataFull.charAt(0).toUpperCase() + dataFull.slice(1);
+
+  html += `<div class="card" id="greetingCard" style="background:linear-gradient(135deg,var(--accent),#FF8C3D);color:#fff;border:none;padding:16px 18px;cursor:pointer;position:relative">
+    <div style="font-size:18px;font-weight:700">${escapeHtml(greeting)}${nome ? ', ' + escapeHtml(nome) : ''}!</div>
+    <div style="font-size:12px;opacity:.85;margin-top:4px">${escapeHtml(dataCapitalized)}${nome ? '' : ' · <u>toque para personalizar</u>'}</div>
+    <span style="position:absolute;top:14px;right:16px;font-size:14px;opacity:.7">✎</span>
+  </div>`;
+
+  html += `<div class="card" style="border-left:3px solid var(--accent)">
+    <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">Frase do dia</div>
+    <div style="font-size:14px;line-height:1.5;font-style:italic">"${escapeHtml(frase)}"</div>
+  </div>`;
+
+  html += `<div class="card" style="border-left:3px solid #6A89CC">
+    <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;color:#6A89CC">Versículo do dia</div>
+    <div style="font-size:14px;line-height:1.5">"${escapeHtml(vers.texto)}"</div>
+    <div class="muted" style="font-size:12px;margin-top:6px;font-weight:600">— ${escapeHtml(vers.ref)}</div>
+  </div>`;
+
+  if (hasWeek && w.observacao_coach) {
+    html += `<div class="card" style="background:var(--bg2);border:none">
+      <div class="muted" style="text-transform:uppercase;font-size:10px;letter-spacing:1px;font-weight:700;margin-bottom:6px">Observação do coach</div>
+      <div style="font-size:14px;line-height:1.5">${escapeHtml(w.observacao_coach)}</div>
+    </div>`;
+  }
+
+  if (hasWeek) {
+    const vol = calcVolumeSemanal(w);
+    const { previstos, concluidos, pct } = calcAderencia(w);
+    const cor = pct !== null ? (pct >= 80 ? '#22c55e' : pct >= 50 ? '#eab308' : '#ef4444') : 'var(--muted)';
+    html += `<div class="card">
+      <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px">Semana ${w.semana_atual} · ${escapeHtml(w.fase)}</div>
+      <div class="row" style="gap:14px;align-items:flex-start">
+        <div style="flex:1">
+          <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Volume</div>
+          <div class="num" style="font-size:22px;font-weight:700;color:var(--accent);margin-top:2px">${vol.toFixed(1)} <span style="font-size:13px;font-weight:600">km</span></div>
+        </div>
+        <div style="flex:1">
+          <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Aderência</div>
+          <div class="num" style="font-size:22px;font-weight:700;color:${cor};margin-top:2px">${pct !== null ? pct + '%' : '-'}</div>
+          ${pct !== null ? `<div class="muted" style="font-size:11px;margin-top:2px">${concluidos}/${previstos} treinos</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+
+    const treinosAtivos = w.treinos.map((t, idx) => ({ t, idx })).filter(({ t }) =>
+      t.tipo?.toLowerCase() !== 'descanso' && (t.rua || t.esteira)
+    );
+    const DIAS_SEMANA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+    const proxItem = treinosAtivos.find(({ t }) =>
+      t.status === 'Pendente' && DIAS_SEMANA.indexOf(t.dia) >= new Date().getDay()
+    );
+
+    if (proxItem) {
+      const { t, idx } = proxItem;
+      const mode = trainModeByIdx[idx] || 'rua';
+      const data = t[mode];
+      const distKm = getDistanciaKm(t, mode);
+      const info = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
+      html += `<div class="card" style="border:1px solid #f97316">
+        <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px;color:#f97316">Próximo treino</div>
+        <div style="font-weight:700;font-size:15px">${escapeHtml(t.dia)} — ${escapeHtml(t.tipo)}</div>
+        <div class="muted" style="font-size:13px;margin-top:4px">${escapeHtml(t.objetivo || '')}</div>
+        ${info ? `<div class="num" style="font-size:13px;margin-top:4px">${info}</div>` : ''}
+        <button class="btn" id="btnVerTreino" data-idx="${idx}" style="margin-top:12px">Ver treino</button>
+      </div>`;
+    } else {
+      const allDone = treinosAtivos.every(({ t }) => t.status === 'Concluído');
+      if (allDone && treinosAtivos.length > 0) {
+        html += `<div class="card" style="border:1px solid var(--green);text-align:center;padding:20px">
+          <div style="font-size:28px;margin-bottom:8px">✅</div>
+          <div style="font-weight:700;font-size:15px;color:var(--green)">Semana concluída!</div>
+          <div class="muted" style="font-size:13px;margin-top:4px">Todos os treinos foram completados</div>
+        </div>`;
+      }
+    }
+  } else {
+    html += `<div class="card" style="padding:24px;text-align:center;margin-top:12px">
+      <div style="font-size:48px;margin-bottom:8px">🏃</div>
+      <h2 style="margin-bottom:8px">Bem-vindo!</h2>
+      <p class="muted" style="font-size:14px;line-height:1.5;margin-bottom:14px">
+        Comece importando o JSON do seu plano semanal de treino.
+      </p>
+      <div class="field" style="text-align:left">
+        <label>Como devemos te chamar? (opcional)</label>
+        <input type="text" id="fNome" placeholder="Seu nome" value="${escapeHtml(nome)}">
+      </div>
+      <button class="btn" id="btnImportarSemana" style="margin-top:6px">📥 Importar primeiro plano</button>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Como funciona</div>
+      <ol class="help-list">
+        <li>Peça ao seu coach (humano ou IA) um plano semanal no formato JSON</li>
+        <li>Cole o JSON aqui no botão acima</li>
+        <li>Acompanhe os treinos no celular durante a corrida</li>
+        <li>Registre cada sessão concluída</li>
+        <li>Veja suas métricas evoluírem ao longo do plano</li>
+      </ol>
+      <button class="btn outline" id="btnVerSchema" style="margin-top:12px;font-size:13px">Ver formato do JSON</button>
+    </div>`;
+  }
+
+  return html;
 }
 
 /* ========== TAB 1: SEMANA ========== */
@@ -747,79 +875,25 @@ function aderenciaHtml(w) {
 }
 
 function renderSemana() {
-  const s = getSettings();
-  const nome = (s.name || '').trim();
-  const frase = fraseDoDia();
-  const vers = versiculoDoDia();
-  const greetingHtml = `<div class="card" id="greetingCard" style="background:linear-gradient(135deg,var(--accent),#FF8C3D);color:#fff;border:none;padding:16px 18px;cursor:pointer;position:relative">
-      <div style="font-size:13px;opacity:.9;font-weight:600">${saudacao()}${nome ? ', ' + escapeHtml(nome) : ''}!</div>
-      <div style="font-size:11px;opacity:.85;margin-top:2px">${escapeHtml(dataExtensa())}${nome ? '' : ' · <u>toque para personalizar</u>'}</div>
-      <span style="position:absolute;top:14px;right:16px;font-size:14px;opacity:.7">✎</span>
-    </div>
-    <div class="card" style="border-left:3px solid var(--accent)">
-      <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">Frase do dia</div>
-      <div style="font-size:14px;line-height:1.5;font-style:italic">"${escapeHtml(frase)}"</div>
-    </div>
-    <div class="card" style="border-left:3px solid #6A89CC">
-      <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;color:#6A89CC">Versículo do dia</div>
-      <div style="font-size:14px;line-height:1.5">"${escapeHtml(vers.texto)}"</div>
-      <div class="muted" style="font-size:12px;margin-top:6px;font-weight:600">— ${escapeHtml(vers.ref)}</div>
-    </div>`;
-
   if (!localStorage.getItem(KEYS.week)) {
-    return `<div class="header-week">
-      <div class="row between">
-        <h1>Run Coach Daily</h1>
-        <div class="header-actions">
-          <span class="bell-wrap" id="bellWrap"><button class="help-btn" id="btnBell" aria-label="Atualização">🔔</button><span class="bell-dot" id="bellDot" style="display:none">1</span></span>
-          <button class="help-btn" id="btnSettings" aria-label="Configurações">⚙</button>
-          <button class="help-btn" id="btnHelp" aria-label="Ajuda">?</button>
-        </div>
-      </div>
-    </div>
-    ${greetingHtml}
-    <div class="card" style="padding:24px;text-align:center;margin-top:12px">
-      <div style="font-size:48px;margin-bottom:8px">🏃</div>
-      <h2 style="margin-bottom:8px">Bem-vindo!</h2>
-      <p class="muted" style="font-size:14px;line-height:1.5;margin-bottom:14px">
-        Comece importando o JSON do seu plano semanal de treino.
-      </p>
-      <div class="field" style="text-align:left">
-        <label>Como devemos te chamar? (opcional)</label>
-        <input type="text" id="fNome" placeholder="Seu nome" value="${escapeHtml(nome)}">
-      </div>
-      <button class="btn" id="btnImportarSemana" style="margin-top:6px">📥 Importar primeiro plano</button>
-    </div>
-    <div class="card" style="margin-top:12px">
-      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Como funciona</div>
-      <ol class="help-list">
-        <li>Peça ao seu coach (humano ou IA) um plano semanal no formato JSON</li>
-        <li>Cole o JSON aqui no botão acima</li>
-        <li>Acompanhe os treinos no celular durante a corrida</li>
-        <li>Registre cada sessão concluída</li>
-        <li>Veja suas métricas evoluírem ao longo do plano</li>
-      </ol>
-      <button class="btn outline" id="btnVerSchema" style="margin-top:12px;font-size:13px">Ver formato do JSON</button>
+    return `<div style="text-align:center;padding:40px 20px">
+      <div style="font-size:36px;margin-bottom:12px">📋</div>
+      <h2>Nenhum plano importado</h2>
+      <p class="muted" style="font-size:14px;margin-top:8px;margin-bottom:16px">Importe seu primeiro plano semanal para ver os treinos aqui.</p>
+      <button class="btn" id="btnImportarSemana">📥 Importar plano</button>
     </div>`;
   }
   const w = getWeek();
   let html = `<div class="header-week">
     <div class="row between">
       <h1>Semana ${w.semana_atual} · ${w.fase}</h1>
-      <div class="header-actions">
-        <span class="bell-wrap" id="bellWrap"><button class="help-btn" id="btnBell" aria-label="Atualização">🔔</button><span class="bell-dot" id="bellDot" style="display:none">1</span></span>
-        <button class="help-btn" id="btnSettings" aria-label="Configurações">⚙</button>
-        <button class="help-btn" id="btnHelp" aria-label="Ajuda">?</button>
-      </div>
     </div>
     <div class="focus">${w.foco_da_semana || ''}</div>
     ${(() => { const vol = calcVolumeSemanal(w); return vol > 0 ? `<div class="volume-label">Volume: ${vol.toFixed(1)} km</div>` : ''; })()}
     ${aderenciaHtml(w)}
   </div>
-  ${greetingHtml}
   ${renderResumeBanner()}`;
   if (w.alerta_coach) html += `<div class="card alert-red"><strong>Atenção do coach:</strong><br>${w.alerta_coach}</div>`;
-  if (w.observacao_coach) html += `<div class="card" style="background:var(--bg2);border:none"><div class="muted" style="text-transform:uppercase;font-size:11px;letter-spacing:.5px;margin-bottom:4px">Observação do coach</div>${w.observacao_coach}</div>`;
 
   const treinosAtivos = w.treinos.map((t, idx) => ({ t, idx })).filter(({ t }) =>
     t.tipo?.toLowerCase() !== 'descanso' && (t.rua || t.esteira)
@@ -875,14 +949,30 @@ function renderSemana() {
 
 /* ========== TAB 2: HISTÓRICO ========== */
 function renderHistorico() {
+  let html = `<h1>Histórico</h1>
+  <div class="toggle" style="display:flex;width:100%">
+    <button data-hist-tab="treinos" class="${historicoSubTab==='treinos'?'active':''}" style="flex:1;text-align:center">Treinos</button>
+    <button data-hist-tab="corridas" class="${historicoSubTab==='corridas'?'active':''}" style="flex:1;text-align:center">Corridas</button>
+  </div>`;
+
+  if (historicoSubTab === 'corridas') {
+    html += renderCorridasSubTab();
+  } else {
+    html += renderTreinosSubTab();
+  }
+  return html;
+}
+
+function renderTreinosSubTab() {
   const logs = getLogs().slice().reverse();
-  if (logs.length === 0) return `<h1>Histórico</h1><div class="empty">Nenhum treino registrado ainda.</div>`;
-  let html = `<h1>Histórico</h1><div style="margin-top:12px"></div>`;
+  if (logs.length === 0) return `<div class="empty">Nenhum treino registrado ainda.</div>`;
+  let html = '';
   for (const l of logs) {
     const d = new Date(l.data + 'T12:00:00');
     const dia = DIAS_NOMES[d.getDay()];
     const paceColor = l.desvio_pace == null ? 'muted' : Math.abs(l.desvio_pace) <= 30 ? 'green' : Math.abs(l.desvio_pace) <= 45 ? 'orange' : 'red';
     const paceAlvo = l.pace_alvo_segundos != null ? fmtPace(l.pace_alvo_segundos) : '-';
+    const pseText = l.pse != null ? `PSE ${l.pse}` : '';
     const sensacaoEmoji = ['','😊','🙂','😐','😓','😩'][l.sensacao] || '';
     let knee = '';
     if (l.joelho === 'leve') knee = `<span style="color:var(--yellow)">⚠ joelho leve</span>`;
@@ -891,13 +981,46 @@ function renderHistorico() {
     html += `<div class="history-item">
       <div class="meta"><strong>${fmtDateBR(l.data)} · ${dia}</strong><span class="badge ${paceColor}">${l.pace_real||'-'} / ${paceAlvo}</span></div>
       <div class="muted" style="font-size:13px">${escapeHtml(l.tipo)} · ${escapeHtml(l.modo)}</div>
-      <div class="row" style="gap:12px;font-size:13px"><span class="num">${l.distancia||'-'} km</span><span>${sensacaoEmoji}</span></div>
+      <div class="row" style="gap:12px;font-size:13px"><span class="num">${l.distancia||'-'} km</span>${pseText ? `<span class="muted">${pseText}</span>` : `<span>${sensacaoEmoji}</span>`}</div>
       ${(knee||atencao)?`<div class="icons">${knee} ${atencao}</div>`:''}
       ${l.observacoes?`<div class="muted" style="font-size:12px;font-style:italic">"${escapeHtml(l.observacoes)}"</div>`:''}
       <div class="row" style="gap:8px;margin-top:8px">
         <button class="btn outline" data-action="edit-log" data-ts="${l.ts}" style="flex:1;padding:8px;font-size:12px">Editar</button>
         <button class="btn outline" data-action="delete-log" data-ts="${l.ts}" style="flex:1;padding:8px;font-size:12px;color:var(--red);border-color:var(--red)">Excluir</button>
       </div>
+    </div>`;
+  }
+  return html;
+}
+
+function renderCorridasSubTab() {
+  const races = getRaces().slice().sort((a, b) => a.date.localeCompare(b.date));
+  const today = todayISO();
+  const upcoming = races.filter(r => r.date >= today);
+  const nextRace = upcoming[0];
+  let html = `<div style="text-align:right;margin-bottom:12px">
+    <button class="btn small" id="btnAddRace" style="width:auto;padding:8px 14px">+ Nova</button>
+  </div>`;
+  if (races.length === 0) {
+    html += `<div class="empty">Nenhuma corrida cadastrada.</div>`;
+    return html;
+  }
+  for (const r of races) {
+    const isPast = r.date < today;
+    const isHigh = nextRace && r.id === nextRace.id;
+    const days = daysBetween(today, r.date);
+    html += `<div class="card race-card ${isHigh?'highlight':''}">
+      <div class="row between">
+        <div class="name">${escapeHtml(r.name)}</div>
+        <div class="row" style="gap:6px">
+          <span class="badge orange">${escapeHtml(r.distance)}</span>
+          <button class="help-btn" data-action="edit-race" data-id="${r.id}" aria-label="Editar" style="width:24px;height:24px;font-size:11px">✎</button>
+          <button class="help-btn" data-action="delete-race" data-id="${r.id}" aria-label="Remover" style="width:24px;height:24px;font-size:12px">✕</button>
+        </div>
+      </div>
+      <div class="date">${fmtDateBR(r.date)}</div>
+      <div class="countdown">${isPast ? 'Concluída' : (days === 0 ? 'Hoje!' : `em ${days} dias`)}</div>
+      ${r.time_estimate ? `<div class="row" style="gap:6px;margin-top:6px;font-size:13px;align-items:center"><span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Tempo estimado</span><span class="num" style="font-weight:700;color:var(--accent)">${escapeHtml(r.time_estimate)}</span>${r.estimate_pace ? `<span class="muted" style="font-size:12px">· pace ${escapeHtml(r.estimate_pace)}</span>` : ''}</div>` : ''}
     </div>`;
   }
   return html;
@@ -925,19 +1048,18 @@ function calcMetricas() {
   const logs = getLogs();
   const w = getWeek();
   const hist = getHistory();
-  const races = getRaces();
   const today = todayISO();
 
   const logsSemana = logs.filter(l => l.semana === w.semana_atual);
   const distSem = logsSemana.reduce((a, l) => a + (l.distancia || 0), 0);
   const tempoSem = logsSemana.reduce((a, l) => a + tempoDeLog(l), 0);
   const concluidosSem = w.treinos.filter(t => t.status === 'Concluído').length;
-  const sensSem = avgNums(logsSemana.map(l => l.sensacao));
+  const pseSem = avgNums(logsSemana.map(l => l.pse).filter(x => x != null));
 
   const totLog = logs.length;
   const distTot = logs.reduce((a, l) => a + (l.distancia || 0), 0);
   const tempoTot = logs.reduce((a, l) => a + tempoDeLog(l), 0);
-  const sensTot = avgNums(logs.map(l => l.sensacao));
+  const pseTot = avgNums(logs.map(l => l.pse).filter(x => x != null));
 
   const comPaceDist = logs.filter(l => parsePace(l.pace_real) && l.distancia);
   const totDistComPace = comPaceDist.reduce((a, l) => a + l.distancia, 0);
@@ -958,10 +1080,10 @@ function calcMetricas() {
 
   const porTipo = {};
   for (const l of logs) {
-    if (!porTipo[l.tipo]) porTipo[l.tipo] = { n: 0, paceSum: 0, paceN: 0, distSum: 0 };
+    if (!porTipo[l.tipo]) porTipo[l.tipo] = { n: 0, paceSum: 0, paceN: 0, distSum: 0, paces: [] };
     porTipo[l.tipo].n++;
     const ps = parsePace(l.pace_real);
-    if (ps) { porTipo[l.tipo].paceSum += ps; porTipo[l.tipo].paceN++; }
+    if (ps) { porTipo[l.tipo].paceSum += ps; porTipo[l.tipo].paceN++; porTipo[l.tipo].paces.push(ps); }
     if (l.distancia) porTipo[l.tipo].distSum += l.distancia;
   }
 
@@ -976,19 +1098,26 @@ function calcMetricas() {
   for (let i = todasSemanas.length - 1; i >= 0; i--) {
     const sw = todasSemanas[i];
     const c = (sw.treinos || []).filter(t => ['Concluído', 'Realocado'].includes(t.status)).length;
-    if (c >= 2) streak++; else break;
+    if (c >= 1) streak++; else break;
   }
 
-  const proxCorrida = races.filter(r => r.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0] || null;
-  const diasProx = proxCorrida ? daysBetween(today, proxCorrida.date) : null;
-  const meta21 = races.find(r => /21|half/i.test(r.name + r.distance));
-  const diasMeta = meta21 ? daysBetween(today, meta21.date) : null;
+  const carga4sem = [];
+  const lastHist = hist.slice(-3);
+  for (const h of lastHist) {
+    let vol = 0;
+    (h.treinos || []).forEach(t => {
+      const km = getDistanciaKm(t, 'rua') || getDistanciaKm(t, 'esteira') || 0;
+      if (km) vol += km;
+    });
+    carga4sem.push({ label: `Sem ${h.semana_atual || '?'}`, vol });
+  }
+  carga4sem.push({ label: 'Atual', vol: calcVolumeSemanal(w) });
 
   return {
-    semanaNum: w.semana_atual, fase: w.fase, concluidosSem, distSem, tempoSem, sensSem,
-    totLog, distTot, tempoTot, sensTot, paceMedio, melhorPace, semanasNoPlano, adesao,
+    semanaNum: w.semana_atual, fase: w.fase, concluidosSem, distSem, tempoSem, pseSem,
+    totLog, distTot, tempoTot, pseTot, paceMedio, melhorPace, semanasNoPlano, adesao,
     joelhoLeve, joelhoMod, naoSeguiu, porTipo, primAvg, ultAvg, evolucao, streak,
-    proxCorrida, diasProx, meta21, diasMeta,
+    carga4sem,
   };
 }
 
@@ -1010,6 +1139,14 @@ function renderMetricas() {
 
   let html = `<h1>Métricas</h1><div style="margin-top:12px"></div>`;
 
+  if (m.streak > 0) {
+    html += `<div class="card" style="text-align:center;padding:16px">
+      <div style="font-size:28px;margin-bottom:4px">🔥</div>
+      <div style="font-size:20px;font-weight:700;color:var(--accent)">${m.streak} semana${m.streak===1?'':'s'} consecutiva${m.streak===1?'':'s'}</div>
+      <div class="muted" style="font-size:12px;margin-top:4px">Streak de consistência</div>
+    </div>`;
+  }
+
   html += `<div class="card">
     <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Semana ${m.semanaNum} · ${escapeHtml(m.fase)}</div>
     <div class="row" style="gap:14px;align-items:flex-start">
@@ -1017,7 +1154,7 @@ function renderMetricas() {
       ${statCard('Distância', `${m.distSem.toFixed(1)}<span style="font-size:13px;font-weight:600"> km</span>`)}
       ${statCard('Tempo', fmtTempo(m.tempoSem))}
     </div>
-    ${m.sensSem != null ? `<div class="muted" style="font-size:12px;margin-top:10px">Sensação média: <span class="num" style="color:var(--text);font-weight:600">${m.sensSem.toFixed(1)}</span> / 5</div>` : ''}
+    ${m.pseSem != null ? `<div class="muted" style="font-size:12px;margin-top:10px">PSE médio: <span class="num" style="color:var(--text);font-weight:600">${m.pseSem.toFixed(1)}</span> / 10</div>` : ''}
   </div>`;
 
   html += `<div class="card">
@@ -1031,9 +1168,33 @@ function renderMetricas() {
     <div class="row" style="gap:14px;align-items:flex-start">
       ${statCard('Pace médio', m.paceMedio ? fmtPace(Math.round(m.paceMedio)) + '<span style="font-size:13px;font-weight:600">/km</span>' : '-')}
       ${statCard('Melhor pace', m.melhorPace ? fmtPace(Math.round(m.melhorPace)) + '<span style="font-size:13px;font-weight:600">/km</span>' : '-')}
-      ${statCard('Adesão', `${Math.round(m.adesao)}<span style="font-size:13px;font-weight:600">%</span>`, `streak: ${m.streak} ${m.streak===1?'sem':'sems'}`)}
+      ${statCard('Adesão', `${Math.round(m.adesao)}<span style="font-size:13px;font-weight:600">%</span>`)}
     </div>
+    ${m.pseTot != null ? `<div class="muted" style="font-size:12px;margin-top:10px">PSE médio geral: <span class="num" style="color:var(--text);font-weight:600">${m.pseTot.toFixed(1)}</span> / 10</div>` : ''}
   </div>`;
+
+  if (m.carga4sem.length > 1) {
+    const maxVol = Math.max(...m.carga4sem.map(s => s.vol), 1);
+    const barW = 40, gap = 20, svgH = 160, chartH = 120, padTop = 10, padBot = 30;
+    const svgW = m.carga4sem.length * (barW + gap) - gap + 20;
+    let bars = '';
+    m.carga4sem.forEach((s, i) => {
+      const h = s.vol > 0 ? Math.max(4, (s.vol / maxVol) * chartH) : 0;
+      const x = 10 + i * (barW + gap);
+      const y = padTop + chartH - h;
+      const isAtual = i === m.carga4sem.length - 1;
+      const opacity = isAtual ? '1' : '0.6';
+      bars += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="#f97316" opacity="${opacity}"/>`;
+      bars += `<text x="${x + barW/2}" y="${padTop + chartH + 14}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--muted)">${escapeHtml(s.label)}</text>`;
+      if (s.vol > 0) {
+        bars += `<text x="${x + barW/2}" y="${y - 4}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--text)">${s.vol.toFixed(1)}</text>`;
+      }
+    });
+    html += `<div class="card">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Carga das últimas ${m.carga4sem.length} semanas</div>
+      <div style="overflow-x:auto"><svg viewBox="0 0 ${svgW} ${svgH}" width="100%" style="max-width:${svgW}px">${bars}</svg></div>
+    </div>`;
+  }
 
   if (m.evolucao != null) {
     const sinal = m.evolucao > 0 ? '↓' : (m.evolucao < 0 ? '↑' : '=');
@@ -1066,6 +1227,29 @@ function renderMetricas() {
       </div>`;
     }
     html += `</div>`;
+
+    const tiposComPace = tipos.filter(([, info]) => info.paces && info.paces.length >= 2);
+    if (tiposComPace.length > 0) {
+      html += `<div class="card">
+        <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Melhor pace por tipo</div>`;
+      for (const [tipo, info] of tiposComPace) {
+        const primeiro = info.paces[0];
+        const melhor = Math.min(...info.paces);
+        const ultimo = info.paces[info.paces.length - 1];
+        html += `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">${escapeHtml(tipo)}</div>
+          <div style="font-size:12px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+            <span class="num">${fmtPace(primeiro)}</span>
+            <span class="muted">→</span>
+            <span class="num" style="color:var(--green);font-weight:700">${fmtPace(melhor)}</span>
+            <span class="muted">→</span>
+            <span class="num">${fmtPace(ultimo)}/km</span>
+          </div>
+          <div class="muted" style="font-size:10px;margin-top:2px">primeiro → melhor → último</div>
+        </div>`;
+      }
+      html += `</div>`;
+    }
   }
 
   if (m.joelhoLeve + m.joelhoMod + m.naoSeguiu > 0) {
@@ -1077,59 +1261,10 @@ function renderMetricas() {
     </div>`;
   }
 
-  if (m.proxCorrida) {
-    html += `<div class="card highlight">
-      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px">Próxima corrida</div>
-      <div style="font-weight:700">${escapeHtml(m.proxCorrida.name)}</div>
-      <div class="muted" style="font-size:12px;margin-top:2px">${fmtDateBR(m.proxCorrida.date)} · em <span class="num">${m.diasProx}</span> dias</div>
-    </div>`;
-  }
-  if (m.meta21 && m.diasMeta != null && m.diasMeta > 0) {
-    html += `<div class="card">
-      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px">Meta principal</div>
-      <div style="font-weight:700">${escapeHtml(m.meta21.name)}</div>
-      <div class="muted" style="font-size:12px;margin-top:2px">em <span class="num">${m.diasMeta}</span> dias</div>
-    </div>`;
-  }
-
   return html;
 }
 
 /* ========== TAB 4: CALENDÁRIO ========== */
-function renderCalendario() {
-  const races = getRaces().slice().sort((a, b) => a.date.localeCompare(b.date));
-  const today = todayISO();
-  const upcoming = races.filter(r => r.date >= today);
-  const nextRace = upcoming[0];
-  let html = `<div class="row between" style="margin-bottom:12px">
-    <h1>Calendário</h1>
-    <button class="btn small" id="btnAddRace" style="width:auto;padding:8px 14px">+ Nova</button>
-  </div>`;
-  if (races.length === 0) {
-    html += `<div class="empty">Nenhuma corrida cadastrada.</div>`;
-    return html;
-  }
-  for (const r of races) {
-    const isPast = r.date < today;
-    const isHigh = nextRace && r.id === nextRace.id;
-    const days = daysBetween(today, r.date);
-    html += `<div class="card race-card ${isHigh?'highlight':''}">
-      <div class="row between">
-        <div class="name">${escapeHtml(r.name)}</div>
-        <div class="row" style="gap:6px">
-          <span class="badge orange">${escapeHtml(r.distance)}</span>
-          <button class="help-btn" data-action="edit-race" data-id="${r.id}" aria-label="Editar" style="width:24px;height:24px;font-size:11px">✎</button>
-          <button class="help-btn" data-action="delete-race" data-id="${r.id}" aria-label="Remover" style="width:24px;height:24px;font-size:12px">✕</button>
-        </div>
-      </div>
-      <div class="date">${fmtDateBR(r.date)}</div>
-      <div class="countdown">${isPast ? 'Concluída' : (days === 0 ? 'Hoje!' : `em ${days} dias`)}</div>
-      ${r.time_estimate ? `<div class="row" style="gap:6px;margin-top:6px;font-size:13px;align-items:center"><span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Tempo estimado</span><span class="num" style="font-weight:700;color:var(--accent)">${escapeHtml(r.time_estimate)}</span>${r.estimate_pace ? `<span class="muted" style="font-size:12px">· pace ${escapeHtml(r.estimate_pace)}</span>` : ''}</div>` : ''}
-    </div>`;
-  }
-  return html;
-}
-
 /* ========== INTERVALS.ICU ========== */
 const INTERVALS_KEY = 'runcoach_intervals_key';
 function getIntervalsKey() { return localStorage.getItem(INTERVALS_KEY) || ''; }
@@ -1835,6 +1970,12 @@ function attachHandlers() {
     if (log) openLogModal(log.train_idx, log);
   }));
   document.querySelectorAll('[data-action="delete-log"]').forEach(b => b.addEventListener('click', () => deletarLog(parseInt(b.dataset.ts))));
+  const btnVerTreino = document.getElementById('btnVerTreino');
+  if (btnVerTreino) btnVerTreino.addEventListener('click', () => setTab('semana'));
+  document.querySelectorAll('[data-hist-tab]').forEach(b => b.addEventListener('click', () => {
+    historicoSubTab = b.dataset.histTab;
+    render();
+  }));
 }
 
 /* ========== MODAL: LOG ========== */
@@ -1848,7 +1989,6 @@ function openLogModal(idx, existingLog) {
   const modoIni = (def.modo || 'Rua');
   const joelhoIni = def.joelho || 'sem dor';
   const seguiuIni = def.seguiu_parametros === false ? 'nao' : 'sim';
-  const sensIni = def.sensacao || 3;
 
   const back = document.createElement('div');
   back.className = 'modal-backdrop';
@@ -1864,10 +2004,6 @@ function openLogModal(idx, existingLog) {
     <div class="field"><label>Pace médio real</label>${pickerInputHtml('fPace', def.pace_real || '', "ex: 7'45\"")}</div>
     <div class="field"><label>Distância percorrida (km)</label>${pickerInputHtml('fDist', def.distancia != null ? def.distancia.toFixed(2).replace('.', ',') + ' km' : '', 'ex: 4,20 km')}</div>
     <div class="field"><label>Tempo do treino</label>${pickerInputHtml('fTempo', def.tempo_segundos != null ? fmtTempoInput(def.tempo_segundos) : '', "ex: 30'00\"")}</div>
-    <div class="field"><label>Sensação geral: <span id="lblSens" class="num">${sensIni}</span></label>
-      <input type="range" id="fSens" min="1" max="5" value="${sensIni}">
-      <div class="slider-labels"><span>Muito fácil</span><span>Ok</span><span>Muito pesado</span></div>
-    </div>
     <div class="field"><label>Joelho</label>
       <div class="radio-row" id="rrJoelho">
         <label class="${joelhoIni==='sem dor'?'sel':''}"><input type="radio" name="joelho" value="sem dor" ${joelhoIni==='sem dor'?'checked':''}><span>Sem dor</span></label>
@@ -1903,7 +2039,6 @@ function openLogModal(idx, existingLog) {
       });
     });
   });
-  back.querySelector('#fSens').addEventListener('input', (e) => back.querySelector('#lblSens').textContent = e.target.value);
   back.querySelector('#btnCancel').addEventListener('click', () => back.remove());
 
   const elData = back.querySelector('#fData');
@@ -1953,7 +2088,6 @@ function openLogModal(idx, existingLog) {
     const paceTxt = paceSeg ? fmtPace(paceSeg) : '';
     const dist = parseFloat(elDist.dataset.value) || null;
     const tempoSeg = parseInt(elTempo.dataset.value) || null;
-    const sensacao = parseInt(back.querySelector('#fSens').value);
     const joelho = back.querySelector('input[name=joelho]:checked').value;
     const seguiu = back.querySelector('input[name=seguiu]:checked').value === 'sim';
     const motivo = back.querySelector('#fMotivo').value.trim();
@@ -1972,7 +2106,7 @@ function openLogModal(idx, existingLog) {
           ...logs[i], data, modo,
           pace_real: paceTxt || null, desvio_pace: desvio,
           distancia: dist, tempo_segundos: tempoSeg,
-          sensacao, joelho,
+          joelho,
           seguiu_parametros: seguiu, motivo_desvio: seguiu ? null : motivo,
           observacoes: obs || null,
         };
@@ -1988,7 +2122,7 @@ function openLogModal(idx, existingLog) {
       data, dia: t.dia, tipo: t.tipo, modo,
       pace_real: paceTxt || null, pace_alvo_segundos: paceAlvo || null,
       desvio_pace: desvio, distancia: dist, tempo_segundos: tempoSeg,
-      sensacao, joelho,
+      joelho,
       seguiu_parametros: seguiu, motivo_desvio: seguiu ? null : motivo,
       observacoes: obs || null, semana: getWeek().semana_atual,
       train_idx: idx, ts: Date.now()
@@ -2969,8 +3103,17 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.11';
+const APP_VERSION = '4.0';
 const CHANGELOG = [
+  { v: '4.0', date: '2026-06-18', items: [
+    'Nova aba Home com saudação, frase do dia, versículo, volume e próximo treino',
+    'Aba Semana simplificada: apenas header, treinos e aderência',
+    'Aba Histórico com toggle Treinos/Corridas (calendário migrado)',
+    'Métricas: streak de consistência, carga 4 semanas (SVG), melhor pace por tipo',
+    'Métricas: sensação substituída por PSE (1 a 10)',
+    'Removido campo "Sensação Geral" do formulário de registro (PSE via modal)',
+    'Aba Calendário removida da navegação',
+  ]},
   { v: '3.11', date: '2026-06-18', items: [
     'Removido botão "Copiar para Zepp" (integração agora via Intervals.icu)',
     'Removido badge "Hoje"; borda laranja marca o próximo treino pendente',
