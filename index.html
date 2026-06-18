@@ -3169,10 +3169,15 @@ function exportBackup() {
     KEYS.week, KEYS.logs, KEYS.history, KEYS.races,
     AVALIACAO_KEY, SETTINGS_KEY, ACTIVE_WORKOUT_KEY, VERSION_KEY
   ];
+  const lerChave = (chave) => {
+    const raw = localStorage.getItem(chave);
+    if (raw === null) return null;
+    try { return JSON.parse(raw); } catch (e) { return raw; }
+  };
   const data = {};
   BACKUP_KEYS.forEach(k => {
-    const v = localStorage.getItem(k);
-    if (v !== null) data[k] = JSON.parse(v);
+    const v = lerChave(k);
+    if (v !== null) data[k] = v;
   });
   const blob = new Blob([JSON.stringify({
     _backup: 'runcoach_daily',
