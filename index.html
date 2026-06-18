@@ -2919,8 +2919,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.7';
+const APP_VERSION = '3.8';
 const CHANGELOG = [
+  { v: '3.8', date: '2026-06-18', items: [
+    'Export/Import de backup completo nas Configurações',
+    'Chave de API do Intervals.icu nunca incluída no backup',
+  ]},
   { v: '3.7', date: '2026-06-18', items: [
     'Fix: workout steps agora gerados mesmo sem avaliação de zonas preenchida',
   ]},
@@ -3160,6 +3164,75 @@ function resetarApp() {
   location.reload();
 }
 
+function exportBackup() {
+  const BACKUP_KEYS = [
+    KEYS.week, KEYS.logs, KEYS.history, KEYS.races,
+    AVALIACAO_KEY, SETTINGS_KEY, ACTIVE_WORKOUT_KEY, VERSION_KEY
+  ];
+  const data = {};
+  BACKUP_KEYS.forEach(k => {
+    const v = localStorage.getItem(k);
+    if (v !== null) data[k] = JSON.parse(v);
+  });
+  const blob = new Blob([JSON.stringify({
+    _backup: 'runcoach_daily',
+    _version: APP_VERSION,
+    _date: new Date().toISOString(),
+    data
+  }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `runcoach_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Backup exportado!');
+}
+
+function importBackup() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const json = JSON.parse(ev.target.result);
+        if (!json._backup || json._backup !== 'runcoach_daily' || !json.data) {
+          toast('Arquivo inválido — não é um backup do Run Coach.', 'error');
+          return;
+        }
+        const keys = Object.keys(json.data);
+        const forbidden = keys.filter(k => k === 'runcoach_intervals_key');
+        if (forbidden.length) {
+          toast('Backup contém chave de API — import bloqueado.', 'error');
+          return;
+        }
+        const dataStr = json._date ? ` de ${new Date(json._date).toLocaleDateString('pt-BR')}` : '';
+        const ver = json._version ? ` (v${json._version})` : '';
+        if (!confirm(`Restaurar backup${ver}${dataStr}?\n\nIsso substituirá TODOS os dados atuais (exceto chave de API do Intervals.icu).\n\nEsta ação não pode ser desfeita.`)) return;
+        const BACKUP_KEYS = [
+          KEYS.week, KEYS.logs, KEYS.history, KEYS.races,
+          AVALIACAO_KEY, SETTINGS_KEY, ACTIVE_WORKOUT_KEY, VERSION_KEY
+        ];
+        BACKUP_KEYS.forEach(k => localStorage.removeItem(k));
+        Object.entries(json.data).forEach(([k, v]) => {
+          if (k !== 'runcoach_intervals_key') {
+            localStorage.setItem(k, JSON.stringify(v));
+          }
+        });
+        toast('Backup restaurado! Recarregando…');
+        setTimeout(() => location.reload(), 800);
+      } catch (err) {
+        toast('Erro ao ler o arquivo: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
 function openChangelogModal() {
   const back = document.createElement('div');
   back.className = 'modal-backdrop';
@@ -3263,6 +3336,15 @@ function openSettingsModal() {
       </div>
       <button class="btn outline" id="btnChangelog" style="width:auto;padding:8px 14px;font-size:13px">Ver</button>
     </div>
+    <div style="padding:14px 0;border-bottom:1px solid var(--border)">
+      <div class="label" style="font-size:14px;font-weight:600;margin-bottom:4px">Dados</div>
+      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:12px">Exporte um backup completo ou restaure dados de outro dispositivo.</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn outline" id="btnExportBackup" style="flex:1;font-size:13px;padding:10px">📦 Exportar backup</button>
+        <button class="btn outline" id="btnImportBackup" style="flex:1;font-size:13px;padding:10px">📥 Importar backup</button>
+      </div>
+      <div class="sub" style="font-size:11px;color:var(--muted);margin-top:8px">A chave de API do Intervals.icu não é incluída no backup por segurança.</div>
+    </div>
     <div class="setting-row">
       <div>
         <div class="label" style="color:var(--red)">Apagar todos os dados</div>
@@ -3277,6 +3359,8 @@ function openSettingsModal() {
   back.querySelector('#setClose').addEventListener('click', () => back.remove());
   back.querySelector('#btnChangelog').addEventListener('click', () => { back.remove(); openChangelogModal(); });
   back.querySelector('#btnReset').addEventListener('click', () => { back.remove(); resetarApp(); });
+  back.querySelector('#btnExportBackup').addEventListener('click', () => exportBackup());
+  back.querySelector('#btnImportBackup').addEventListener('click', () => { back.remove(); importBackup(); });
   back.querySelector('#setNome').addEventListener('change', (e) => {
     const cur = getSettings();
     setSettings({ ...cur, name: e.target.value.trim() });
