@@ -1103,7 +1103,9 @@ function calcMetricas() {
   }
 
   const carga4sem = [];
-  const lastHist = hist.slice(-7);
+  const semAtualNum = w.semana_atual;
+  const histDedup = hist.filter(h => h.semana_atual != semAtualNum);
+  const lastHist = histDedup.slice(-7);
   for (const h of lastHist) {
     let vol = 0;
     (h.treinos || []).forEach(t => {
@@ -1189,6 +1191,7 @@ function renderMetricas() {
     const barW = Math.floor((svgTotalW - pad * 2 - gap * (nBars - 1)) / nBars);
     const svgH = 160, chartH = 120, padTop = 10;
     let bars = '';
+    const labelFs = nBars <= 4 ? 11 : nBars <= 6 ? 10 : 9;
     m.carga4sem.forEach((s, i) => {
       const h = s.vol > 0 ? Math.max(4, (s.vol / maxVol) * chartH) : 0;
       const x = pad + i * (barW + gap);
@@ -1196,12 +1199,8 @@ function renderMetricas() {
       const isAtual = i === nBars - 1;
       const opacity = isAtual ? '1' : '0.6';
       bars += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="#f97316" opacity="${opacity}"/>`;
-      bars += `<text x="${x + barW/2}" y="${padTop + chartH + 14}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--muted)">${escapeHtml(s.label)}</text>`;
-      if (s.vol > 0) {
-        const valStr = s.vol.toFixed(1);
-        const fs = valStr.length > 4 ? 9 : 10;
-        bars += `<text x="${x + barW/2}" y="${y - 4}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--text)">${valStr}</text>`;
-      }
+      const labelTxt = `${s.label} · ${s.vol.toFixed(1)}km`;
+      bars += `<text x="${x + barW/2}" y="${padTop + chartH + 15}" text-anchor="middle" font-size="${labelFs}" fill="#9ca3af">${escapeHtml(labelTxt)}</text>`;
     });
     html += `<div class="card" style="position:relative">
       ${mHelp('carga')}
