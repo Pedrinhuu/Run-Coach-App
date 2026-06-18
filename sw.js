@@ -1,4 +1,4 @@
-const CACHE = 'runcoach-v29';
+const CACHE = 'runcoach-v30';
 const ASSETS = [
   '/',
   '/index.html',

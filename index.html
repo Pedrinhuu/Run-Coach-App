@@ -1124,6 +1124,51 @@ function parseDuracaoParaSegundos(duracaoStr) {
   return segundos > 0 ? segundos : 1800;
 }
 
+function buildIntervalsDescription(bloco, zonas) {
+  if (!bloco || !zonas || Object.keys(zonas).length === 0) return null;
+
+  const zoneNum = (str) => str?.replace(/\D/g, '') || '2';
+  const paceCue = (z) => {
+    const data = zonas[z?.toLowerCase()];
+    return data ? ` (${data.pace_min}-${data.pace_max}/km)` : '';
+  };
+  const stepLine = (min, zona) => `- ${min}m Z${zoneNum(zona)} HR${paceCue(zona)}`;
+
+  const aqMin = extrairMinutos(bloco.aquecimento) || 5;
+  const dqMin = extrairMinutos(bloco.desaquecimento) || 5;
+  const zonaAq = bloco.zona_aquecimento || 'Z1';
+  const zonaDq = bloco.zona_desaquecimento || 'Z1';
+  const zonaPrincipal = bloco.zona_principal || 'Z2';
+
+  const sections = [];
+  sections.push('Warmup');
+  sections.push(stepLine(aqMin, zonaAq));
+
+  if (bloco.intervalos && bloco.intervalos.ciclos && bloco.intervalos.fases) {
+    const { ciclos, fases } = bloco.intervalos;
+    sections.push('');
+    sections.push(`Main Set ${ciclos}x`);
+    const zonaFallback = ['Z2', 'Z3', 'Z4', 'Z5'];
+    fases.forEach((f, i) => {
+      const min = Math.max(1, Math.round((f.duracao_segundos || 60) / 60));
+      const zona = f.zona_fase || zonaFallback[i] || zonaPrincipal;
+      sections.push(stepLine(min, zona));
+    });
+  } else {
+    const totalMin = extrairMinutos(bloco.duracao_total) || 30;
+    const principalMin = Math.max(1, totalMin - aqMin - dqMin);
+    sections.push('');
+    sections.push('Main Set');
+    sections.push(stepLine(principalMin, zonaPrincipal));
+  }
+
+  sections.push('');
+  sections.push('Cooldown');
+  sections.push(stepLine(dqMin, zonaDq));
+
+  return sections.join('\n');
+}
+
 async function enviarParaIntervals(treino, modalidade, dataISO) {
   const apiKey = getIntervalsKey();
   if (!apiKey) return;
@@ -1132,39 +1177,13 @@ async function enviarParaIntervals(treino, modalidade, dataISO) {
   const avaliacao = load(AVALIACAO_KEY, null);
   const zonas = (avaliacao && avaliacao.zonas) || {};
 
-  const linhas = [];
+  const descricao = buildIntervalsDescription(bloco, zonas) || [
+    bloco.aquecimento ? `Aquecimento: ${bloco.aquecimento}` : '',
+    bloco.principal ? `Principal: ${bloco.principal}` : '',
+    bloco.desaquecimento ? `Desaquecimento: ${bloco.desaquecimento}` : '',
+    bloco.duracao_total ? `Duração: ${bloco.duracao_total}` : '',
+  ].filter(Boolean).join('\n');
 
-  if (bloco.aquecimento) {
-    const zona = bloco.zona_aquecimento || '';
-    const infoZona = zona && zonas[zona.toLowerCase()]
-      ? ` (${zonas[zona.toLowerCase()].pace_central}/km)`
-      : '';
-    linhas.push(`Aquecimento${zona ? ' ' + zona : ''}${infoZona}: ${bloco.aquecimento}`);
-  }
-
-  if (bloco.principal) {
-    const zona = bloco.zona_principal || '';
-    const infoZona = zona && zonas[zona.toLowerCase()]
-      ? ` (${zonas[zona.toLowerCase()].pace_min} - ${zonas[zona.toLowerCase()].pace_max}/km)`
-      : '';
-    linhas.push(`Principal${zona ? ' ' + zona : ''}${infoZona}: ${bloco.principal}`);
-
-    if (bloco.intervalos) {
-      const { ciclos, fases } = bloco.intervalos;
-      linhas.push(`→ ${ciclos} ciclos: ` +
-        fases.map(f => `${f.nome} ${f.duracao_segundos}s @ ${f.referencia}`).join(' + '));
-    }
-  }
-
-  if (bloco.desaquecimento) {
-    const zona = bloco.zona_desaquecimento || '';
-    linhas.push(`Desaquecimento${zona ? ' ' + zona : ''}: ${bloco.desaquecimento}`);
-  }
-
-  if (bloco.duracao_total) linhas.push(`Duração: ${bloco.duracao_total}`);
-  if (bloco.distancia_km) linhas.push(`Distância: ${bloco.distancia_km} km`);
-
-  const descricao = linhas.join('\n');
   const duracaoSegundos = parseDuracaoParaSegundos(bloco.duracao_total);
 
   const payload = [{
@@ -2900,8 +2919,14 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '3.5';
+const APP_VERSION = '3.6';
 const CHANGELOG = [
+  { v: '3.6', date: '2026-06-18', items: [
+    'Treinos enviados ao Intervals.icu agora geram workout steps estruturados',
+    'Relógio recebe zonas de FC (Z1-Z5 HR) com pace como referência visual',
+    'Fartlek/intervalados enviados com repetições e fases corretas',
+    'Fallback para texto livre se avaliação de zonas não existir',
+  ]},
   { v: '3.5', date: '2026-06-17', items: [
     'Fix: erro 422 Intervals.icu — endpoint bulk, data com horário, payload como array',
     'Upsert com external_id evita duplicatas ao reenviar o mesmo treino',
