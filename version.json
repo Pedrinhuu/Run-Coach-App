@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.18-0116",
+  "versao": "2026.06.18-0123",
   "data": "2026-06-18",
-  "novidades": ["v3.4: Fix 422 Intervals.icu + ocultar dias de descanso da aba Semana"]
+  "novidades": ["v3.5: Fix endpoint Intervals.icu — bulk upsert com external_id"]
 }
