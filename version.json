@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.18-1214",
+  "versao": "2026.06.18-1252",
   "data": "2026-06-18",
-  "novidades": ["v3.7: Fix buildIntervalsDescription — gerar steps sem exigir zonas"]
+  "novidades": ["v3.8: Export/Import backup completo nas Configurações"]
 }
