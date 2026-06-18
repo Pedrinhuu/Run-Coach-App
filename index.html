@@ -121,10 +121,11 @@
   .help-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:#fff;color:var(--text);font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
   .bell-wrap{position:relative;display:inline-flex}
   .bell-wrap .bell-dot{position:absolute;top:-2px;right:-2px;width:14px;height:14px;background:var(--red);border-radius:50%;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;line-height:1}
-  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:300;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:90%;text-align:center}
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:300;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;max-width:90%;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
-  .toast.error{background:var(--red)}
-  .toast.success{background:var(--green)}
+  .toast.error{background:#ef4444}
+  .metric-help{position:absolute;top:12px;right:12px;width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;opacity:.6;transition:opacity .2s}
+  .metric-help:hover{opacity:1}
   .help-list{padding-left:18px;font-size:14px;line-height:1.5}
   .help-list li{margin-bottom:6px}
   .zone-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px}
@@ -585,7 +586,6 @@ function renderHome() {
     <div class="header-actions">
       <span class="bell-wrap" id="bellWrap"><button class="help-btn" id="btnBell" aria-label="Atualização">🔔</button><span class="bell-dot" id="bellDot" style="display:none">1</span></span>
       <button class="help-btn" id="btnSettings" aria-label="Configurações">⚙</button>
-      <button class="help-btn" id="btnHelp" aria-label="Ajuda">?</button>
     </div>
   </div>`;
 
@@ -623,8 +623,8 @@ function renderHome() {
     const vol = calcVolumeSemanal(w);
     const { previstos, concluidos, pct } = calcAderencia(w);
     const cor = pct !== null ? (pct >= 80 ? '#22c55e' : pct >= 50 ? '#eab308' : '#ef4444') : 'var(--muted)';
-    html += `<div class="card">
-      <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px">Semana ${w.semana_atual} · ${escapeHtml(w.fase)}</div>
+    html += `<div class="card" style="border-left:3px solid #22c55e">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:8px;color:#f97316">Semana ${w.semana_atual} · ${escapeHtml(w.fase)}</div>
       <div class="row" style="gap:14px;align-items:flex-start">
         <div style="flex:1">
           <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Volume</div>
@@ -887,6 +887,7 @@ function renderSemana() {
   let html = `<div class="header-week">
     <div class="row between">
       <h1>Semana ${w.semana_atual} · ${w.fase}</h1>
+      <button class="help-btn" id="btnHelp" aria-label="Ajuda">?</button>
     </div>
     <div class="focus">${w.foco_da_semana || ''}</div>
     ${(() => { const vol = calcVolumeSemanal(w); return vol > 0 ? `<div class="volume-label">Volume: ${vol.toFixed(1)} km</div>` : ''; })()}
@@ -918,7 +919,7 @@ function renderSemana() {
 
     const distKm = getDistanciaKm(t, mode);
     const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
-    html += `<div class="card" style="${cardBorder}">
+    html += `<div class="card" ${isNextPending ? 'id="nextPendingCard"' : ''} style="${cardBorder}">
       ${zoneBarHtml(data)}
       <div class="row between">
         <div><h3>${t.dia} — ${t.tipo}</h3>${t.data_prevista ? `<div class="muted" style="font-size:11px;margin-top:2px">Data: ${fmtDateBR(t.data_prevista)}</div>`:''}</div>
@@ -1139,15 +1140,19 @@ function renderMetricas() {
 
   let html = `<h1>Métricas</h1><div style="margin-top:12px"></div>`;
 
+  const mHelp = key => `<button class="metric-help" data-metric-help="${key}" aria-label="Ajuda">ⓘ</button>`;
+
   if (m.streak > 0) {
-    html += `<div class="card" style="text-align:center;padding:16px">
+    html += `<div class="card" style="text-align:center;padding:16px;position:relative">
+      ${mHelp('streak')}
       <div style="font-size:28px;margin-bottom:4px">🔥</div>
       <div style="font-size:20px;font-weight:700;color:var(--accent)">${m.streak} semana${m.streak===1?'':'s'} consecutiva${m.streak===1?'':'s'}</div>
       <div class="muted" style="font-size:12px;margin-top:4px">Streak de consistência</div>
     </div>`;
   }
 
-  html += `<div class="card">
+  html += `<div class="card" style="position:relative">
+    ${mHelp('resumo_semana')}
     <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Semana ${m.semanaNum} · ${escapeHtml(m.fase)}</div>
     <div class="row" style="gap:14px;align-items:flex-start">
       ${statCard('Treinos', `${m.concluidosSem}/3`)}
@@ -1157,7 +1162,8 @@ function renderMetricas() {
     ${m.pseSem != null ? `<div class="muted" style="font-size:12px;margin-top:10px">PSE médio: <span class="num" style="color:var(--text);font-weight:600">${m.pseSem.toFixed(1)}</span> / 10</div>` : ''}
   </div>`;
 
-  html += `<div class="card">
+  html += `<div class="card" style="position:relative">
+    ${mHelp('resumo_geral')}
     <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Resumo geral</div>
     <div class="row" style="gap:14px;align-items:flex-start">
       ${statCard('Treinos', m.totLog, `${m.semanasNoPlano} ${m.semanasNoPlano===1?'sem':'sems'} no plano`)}
@@ -1190,7 +1196,8 @@ function renderMetricas() {
         bars += `<text x="${x + barW/2}" y="${y - 4}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--text)">${s.vol.toFixed(1)}</text>`;
       }
     });
-    html += `<div class="card">
+    html += `<div class="card" style="position:relative">
+      ${mHelp('carga')}
       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Carga das últimas ${m.carga4sem.length} semanas</div>
       <div style="overflow-x:auto"><svg viewBox="0 0 ${svgW} ${svgH}" width="100%" style="max-width:${svgW}px">${bars}</svg></div>
     </div>`;
@@ -1200,7 +1207,8 @@ function renderMetricas() {
     const sinal = m.evolucao > 0 ? '↓' : (m.evolucao < 0 ? '↑' : '=');
     const cor = m.evolucao > 0 ? 'var(--green)' : (m.evolucao < 0 ? 'var(--red)' : 'var(--muted)');
     const txt = m.evolucao > 0 ? `${m.evolucao}s mais rápido` : (m.evolucao < 0 ? `${Math.abs(m.evolucao)}s mais lento` : 'estável');
-    html += `<div class="card">
+    html += `<div class="card" style="position:relative">
+      ${mHelp('evolucao')}
       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Evolução de pace</div>
       <div class="row between" style="font-size:13px">
         <span>Primeiras 3</span><span class="num" style="font-weight:600">${fmtPace(Math.round(m.primAvg))}/km</span>
@@ -1214,7 +1222,8 @@ function renderMetricas() {
 
   const tipos = Object.entries(m.porTipo);
   if (tipos.length > 0) {
-    html += `<div class="card">
+    html += `<div class="card" style="position:relative">
+      ${mHelp('por_tipo')}
       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Por tipo de treino</div>`;
     for (const [tipo, info] of tipos) {
       const paceAvg = info.paceN > 0 ? info.paceSum / info.paceN : null;
@@ -1253,7 +1262,8 @@ function renderMetricas() {
   }
 
   if (m.joelhoLeve + m.joelhoMod + m.naoSeguiu > 0) {
-    html += `<div class="card">
+    html += `<div class="card" style="position:relative">
+      ${mHelp('alertas')}
       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Alertas registrados</div>
       ${m.joelhoLeve > 0 ? `<div class="row between" style="font-size:13px;padding:4px 0"><span>Dor leve no joelho</span><span class="num" style="color:var(--yellow);font-weight:600">${m.joelhoLeve}×</span></div>` : ''}
       ${m.joelhoMod > 0 ? `<div class="row between" style="font-size:13px;padding:4px 0"><span>Dor moderada no joelho</span><span class="num" style="color:var(--red);font-weight:600">${m.joelhoMod}×</span></div>` : ''}
@@ -1971,11 +1981,18 @@ function attachHandlers() {
   }));
   document.querySelectorAll('[data-action="delete-log"]').forEach(b => b.addEventListener('click', () => deletarLog(parseInt(b.dataset.ts))));
   const btnVerTreino = document.getElementById('btnVerTreino');
-  if (btnVerTreino) btnVerTreino.addEventListener('click', () => setTab('semana'));
+  if (btnVerTreino) btnVerTreino.addEventListener('click', () => {
+    setTab('semana');
+    setTimeout(() => {
+      const el = document.getElementById('nextPendingCard');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  });
   document.querySelectorAll('[data-hist-tab]').forEach(b => b.addEventListener('click', () => {
     historicoSubTab = b.dataset.histTab;
     render();
   }));
+  document.querySelectorAll('[data-metric-help]').forEach(b => b.addEventListener('click', () => openMetricHelp(b.dataset.metricHelp)));
 }
 
 /* ========== MODAL: LOG ========== */
@@ -2437,6 +2454,30 @@ function aplicarEstimativasProvas(estimativas) {
   return { atualizadas, criadas };
 }
 
+/* ========== METRIC HELP ========== */
+const METRIC_HELP = {
+  streak: 'Conta quantas semanas seguidas você completou pelo menos 1 treino. Manter a consistência semana a semana é mais importante do que a intensidade de cada treino individual.',
+  resumo_semana: 'Mostra os totais da semana atual: treinos concluídos, distância percorrida, tempo total e PSE médio (Percepção Subjetiva de Esforço, de 1 muito fácil a 10 máximo).',
+  resumo_geral: 'Totais acumulados desde o início do plano: todos os treinos registrados, distância total, tempo total, pace médio e melhor pace alcançado.',
+  evolucao: 'Compara o pace médio dos seus primeiros treinos com os mais recentes. Se o pace das últimas sessões for menor (mais rápido), você está evoluindo. Estável significa ritmo consistente.',
+  por_tipo: 'Agrupa seus treinos por categoria (Corrida Contínua, Fartlek, Longão, etc.) mostrando quantas vezes você fez cada tipo e o pace médio em cada modalidade.',
+  alertas: 'Lista os alertas físicos que você registrou nos treinos, como dor no joelho ou não seguir os parâmetros. Serve para acompanhar padrões e conversar com seu médico ou fisioterapeuta se algo aparecer com frequência.',
+  carga: 'Mostra o volume em km de cada uma das últimas 4 semanas em barras. Ideal para visualizar se a carga está crescendo gradualmente, o que reduz risco de lesão e melhora o condicionamento.'
+};
+function openMetricHelp(key) {
+  const txt = METRIC_HELP[key];
+  if (!txt) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:250;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `<div style="background:#1e1e1e;color:#e5e5e5;border-radius:12px;padding:20px 22px;max-width:360px;width:100%;font-size:14px;line-height:1.6;position:relative">
+    <button style="position:absolute;top:10px;right:12px;background:none;border:none;color:#999;font-size:18px;cursor:pointer" id="closeMetricHelp">✕</button>
+    <div style="padding-right:24px">${txt}</div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.getElementById('closeMetricHelp').addEventListener('click', () => overlay.remove());
+}
+
 /* ========== TOAST ========== */
 function toast(msg, kind = '') {
   document.querySelectorAll('.toast').forEach(t => t.remove());
@@ -2445,7 +2486,7 @@ function toast(msg, kind = '') {
   el.textContent = msg;
   document.body.appendChild(el);
   requestAnimationFrame(() => el.classList.add('show'));
-  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 3200);
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2500);
 }
 
 /* ========== EXPORT FIT ========== */
