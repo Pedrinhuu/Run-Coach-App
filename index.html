@@ -613,8 +613,8 @@ function renderHome() {
   </div>`;
 
   if (hasWeek && w.observacao_coach) {
-    html += `<div class="card" style="background:var(--bg2);border:none">
-      <div class="muted" style="text-transform:uppercase;font-size:10px;letter-spacing:1px;font-weight:700;margin-bottom:6px">Observação do coach</div>
+    html += `<div class="card" style="border-left:3px solid #8b5cf6">
+      <div class="muted" style="text-transform:uppercase;font-size:10px;letter-spacing:1px;font-weight:700;margin-bottom:6px;color:#8b5cf6">Observação do coach</div>
       <div style="font-size:14px;line-height:1.5">${escapeHtml(w.observacao_coach)}</div>
     </div>`;
   }
@@ -623,8 +623,8 @@ function renderHome() {
     const vol = calcVolumeSemanal(w);
     const { previstos, concluidos, pct } = calcAderencia(w);
     const cor = pct !== null ? (pct >= 80 ? '#22c55e' : pct >= 50 ? '#eab308' : '#ef4444') : 'var(--muted)';
-    html += `<div class="card" style="border-left:3px solid #22c55e">
-      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:8px;color:#f97316">Semana ${w.semana_atual} · ${escapeHtml(w.fase)}</div>
+    html += `<div class="card" style="border-left:3px solid #06b6d4">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:8px;color:#06b6d4">Semana ${w.semana_atual} · ${escapeHtml(w.fase)}</div>
       <div class="row" style="gap:14px;align-items:flex-start">
         <div style="flex:1">
           <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Volume</div>
@@ -1103,16 +1103,17 @@ function calcMetricas() {
   }
 
   const carga4sem = [];
-  const lastHist = hist.slice(-3);
+  const lastHist = hist.slice(-7);
   for (const h of lastHist) {
     let vol = 0;
     (h.treinos || []).forEach(t => {
       const km = getDistanciaKm(t, 'rua') || getDistanciaKm(t, 'esteira') || 0;
       if (km) vol += km;
     });
-    carga4sem.push({ label: `Sem ${h.semana_atual || '?'}`, vol });
+    carga4sem.push({ vol });
   }
-  carga4sem.push({ label: 'Atual', vol: calcVolumeSemanal(w) });
+  carga4sem.push({ vol: calcVolumeSemanal(w) });
+  carga4sem.forEach((s, i) => { s.label = `Sem ${i + 1}`; });
 
   return {
     semanaNum: w.semana_atual, fase: w.fase, concluidosSem, distSem, tempoSem, pseSem,
@@ -1179,27 +1180,33 @@ function renderMetricas() {
     ${m.pseTot != null ? `<div class="muted" style="font-size:12px;margin-top:10px">PSE médio geral: <span class="num" style="color:var(--text);font-weight:600">${m.pseTot.toFixed(1)}</span> / 10</div>` : ''}
   </div>`;
 
-  if (m.carga4sem.length > 1) {
+  if (m.carga4sem.length >= 1) {
+    const nBars = m.carga4sem.length;
+    const cargaTitulo = nBars === 1 ? 'Carga da semana atual' : `Carga das últimas ${nBars} semanas`;
     const maxVol = Math.max(...m.carga4sem.map(s => s.vol), 1);
-    const barW = 40, gap = 20, svgH = 160, chartH = 120, padTop = 10, padBot = 30;
-    const svgW = m.carga4sem.length * (barW + gap) - gap + 20;
+    const svgTotalW = 300;
+    const pad = 10, gap = Math.max(6, Math.round(60 / nBars));
+    const barW = Math.floor((svgTotalW - pad * 2 - gap * (nBars - 1)) / nBars);
+    const svgH = 160, chartH = 120, padTop = 10;
     let bars = '';
     m.carga4sem.forEach((s, i) => {
       const h = s.vol > 0 ? Math.max(4, (s.vol / maxVol) * chartH) : 0;
-      const x = 10 + i * (barW + gap);
+      const x = pad + i * (barW + gap);
       const y = padTop + chartH - h;
-      const isAtual = i === m.carga4sem.length - 1;
+      const isAtual = i === nBars - 1;
       const opacity = isAtual ? '1' : '0.6';
       bars += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="#f97316" opacity="${opacity}"/>`;
       bars += `<text x="${x + barW/2}" y="${padTop + chartH + 14}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--muted)">${escapeHtml(s.label)}</text>`;
       if (s.vol > 0) {
-        bars += `<text x="${x + barW/2}" y="${y - 4}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--text)">${s.vol.toFixed(1)}</text>`;
+        const valStr = s.vol.toFixed(1);
+        const fs = valStr.length > 4 ? 9 : 10;
+        bars += `<text x="${x + barW/2}" y="${y - 4}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--text)">${valStr}</text>`;
       }
     });
     html += `<div class="card" style="position:relative">
       ${mHelp('carga')}
-      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Carga das últimas ${m.carga4sem.length} semanas</div>
-      <div style="overflow-x:auto"><svg viewBox="0 0 ${svgW} ${svgH}" width="100%" style="max-width:${svgW}px">${bars}</svg></div>
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">${cargaTitulo}</div>
+      <div style="overflow-x:auto"><svg viewBox="0 0 ${svgTotalW} ${svgH}" width="100%">${bars}</svg></div>
     </div>`;
   }
 
