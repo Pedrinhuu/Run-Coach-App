@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.18-2001",
-  "data": "2026-06-18",
-  "novidades": ["v4.0.3: Fix gráfico de carga: dedup semana atual e labels com volume"]
+  "versao": "2026.06.20-1544",
+  "data": "2026-06-20",
+  "novidades": ["v4.0.4: Registro em semana anterior, fix carga fantasma e PSE"]
 }
