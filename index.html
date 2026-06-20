@@ -2038,7 +2038,11 @@ function openLogModal(idx, existingLog) {
   const joelhoIni = def.joelho || 'sem dor';
   const seguiuIni = def.seguiu_parametros === false ? 'nao' : 'sim';
 
-  const historial = getHistory();
+  const histRaw = localStorage.getItem(KEYS.history);
+  const historial = histRaw ? JSON.parse(histRaw) : [];
+  console.log('[openLogModal] histRaw:', histRaw);
+  console.log('[openLogModal] historial parsed:', historial);
+  console.log('[openLogModal] semanas encontradas:', historial.length);
   const showSemanaSelect = !isEdit && historial.length > 0;
   let semanaSelectHtml = '';
   if (showSemanaSelect) {
@@ -2071,6 +2075,9 @@ function openLogModal(idx, existingLog) {
     </div>
     <div class="field"><label>Data efetiva</label>${pickerInputHtml('fData', def.data ? fmtDateBR(def.data) : fmtDateBR(todayISO()), 'Selecionar data')}</div>
     <div class="field"><label>Pace médio real</label>${pickerInputHtml('fPace', def.pace_real || '', "ex: 7'45\"")}</div>
+    <div class="field"><label class="muted" style="font-size:12px">Ou informe a velocidade (km/h):</label>
+      <input type="number" id="fVelocidade" min="3" max="20" step="0.1" placeholder="ex: 5.7" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:14px">
+    </div>
     <div class="field"><label>Distância percorrida (km)</label>${pickerInputHtml('fDist', def.distancia != null ? def.distancia.toFixed(2).replace('.', ',') + ' km' : '', 'ex: 4,20 km')}</div>
     <div class="field"><label>Tempo do treino</label>${pickerInputHtml('fTempo', def.tempo_segundos != null ? fmtTempoInput(def.tempo_segundos) : '', "ex: 30'00\"")}</div>
     <div class="field"><label>Joelho</label>
@@ -2128,6 +2135,21 @@ function openLogModal(idx, existingLog) {
     openPacePicker(cur, ({ seconds, text }) => {
       pickerInputSet(elPace, String(seconds), text);
     });
+  });
+
+  const elVel = back.querySelector('#fVelocidade');
+  elVel.addEventListener('input', () => {
+    const v = parseFloat(elVel.value);
+    if (v > 0) {
+      const minutos = 60 / v;
+      const min = Math.floor(minutos);
+      const seg = Math.round((minutos - min) * 60);
+      const s = seg >= 60 ? 0 : seg;
+      const m = seg >= 60 ? min + 1 : min;
+      const totalSec = m * 60 + s;
+      const txt = `${m}'${String(s).padStart(2, '0')}"`;
+      pickerInputSet(elPace, String(totalSec), txt);
+    }
   });
 
   const elDist = back.querySelector('#fDist');
@@ -3235,7 +3257,7 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.0.5';
+const APP_VERSION = '4.0.6';
 const CHANGELOG = [
   { v: '4.0', date: '2026-06-18', items: [
     'Nova aba Home com saudação, frase do dia, versículo, volume e próximo treino',
