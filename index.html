@@ -1105,7 +1105,10 @@ function calcMetricas() {
   const carga4sem = [];
   const semAtualNum = w.semana_atual;
   const histDedup = hist.filter(h => h.semana_atual != semAtualNum);
-  const lastHist = histDedup.slice(-7);
+  const histComConcluido = histDedup.filter(h =>
+    (h.treinos || []).some(t => ['Concluído', 'Realocado'].includes(t.status))
+  );
+  const lastHist = histComConcluido.slice(-7);
   for (const h of lastHist) {
     let vol = 0;
     (h.treinos || []).forEach(t => {
@@ -1114,7 +1117,8 @@ function calcMetricas() {
     });
     carga4sem.push({ vol });
   }
-  carga4sem.push({ vol: calcVolumeSemanal(w) });
+  const atualTemConcluido = (w.treinos || []).some(t => ['Concluído', 'Realocado'].includes(t.status));
+  if (atualTemConcluido) carga4sem.push({ vol: calcVolumeSemanal(w) });
   carga4sem.forEach((s, i) => { s.label = `Sem ${i + 1}`; });
 
   return {
@@ -2013,10 +2017,24 @@ function openLogModal(idx, existingLog) {
   const joelhoIni = def.joelho || 'sem dor';
   const seguiuIni = def.seguiu_parametros === false ? 'nao' : 'sim';
 
+  const historial = getHistory();
+  const showSemanaSelect = !isEdit && historial.length > 0;
+  let semanaSelectHtml = '';
+  if (showSemanaSelect) {
+    const opts = historial.slice().reverse().map(h =>
+      `<option value="${h.semana_atual}">Semana ${h.semana_atual} · ${escapeHtml(h.fase || '')}</option>`
+    ).join('');
+    semanaSelectHtml = `<div class="field"><label>Semana do treino</label>
+      <select id="fSemana" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:14px">
+        <option value="atual" selected>Semana atual</option>${opts}
+      </select></div>`;
+  }
+
   const back = document.createElement('div');
   back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal">
     <h2>${isEdit ? 'Editar' : 'Registrar'}: ${escapeHtml(t.dia)} · ${escapeHtml(t.tipo)}</h2>
+    ${semanaSelectHtml}
     <div class="field"><label>Tipo</label>
       <div class="radio-row" id="rrModo">
         <label class="${modoIni==='Rua'?'sel':''}"><input type="radio" name="modo" value="Rua" ${modoIni==='Rua'?'checked':''}><span>Rua</span></label>
@@ -2141,24 +2159,40 @@ function openLogModal(idx, existingLog) {
       return;
     }
 
+    const selSemana = showSemanaSelect ? back.querySelector('#fSemana').value : 'atual';
     const log = {
       data, dia: t.dia, tipo: t.tipo, modo,
       pace_real: paceTxt || null, pace_alvo_segundos: paceAlvo || null,
       desvio_pace: desvio, distancia: dist, tempo_segundos: tempoSeg,
       joelho,
       seguiu_parametros: seguiu, motivo_desvio: seguiu ? null : motivo,
-      observacoes: obs || null, semana: getWeek().semana_atual,
+      observacoes: obs || null, semana: selSemana === 'atual' ? getWeek().semana_atual : parseInt(selSemana),
       train_idx: idx, ts: Date.now()
     };
-    const logs = getLogs(); logs.push(log); setLogs(logs);
-    const w2 = getWeek(); w2.treinos[idx].status = 'Concluído'; w2.treinos[idx].data_efetiva = data; setWeek(w2);
+
+    if (selSemana !== 'atual') {
+      const hist2 = getHistory();
+      const hi = hist2.findIndex(h => h.semana_atual == selSemana);
+      if (hi >= 0) {
+        if (!Array.isArray(hist2[hi].logs)) hist2[hi].logs = [];
+        hist2[hi].logs.push(log);
+        if (hist2[hi].treinos && hist2[hi].treinos[idx]) {
+          hist2[hi].treinos[idx].status = 'Concluído';
+          hist2[hi].treinos[idx].data_efetiva = data;
+        }
+        setHistory(hist2);
+      }
+    } else {
+      const logs = getLogs(); logs.push(log); setLogs(logs);
+      const w2 = getWeek(); w2.treinos[idx].status = 'Concluído'; w2.treinos[idx].data_efetiva = data; setWeek(w2);
+    }
     back.remove();
     render();
-    openPSEModal(log.ts);
+    openPSEModal(log.ts, selSemana);
   });
 }
 
-function openPSEModal(logTs) {
+function openPSEModal(logTs, semana) {
   const PSE_COLORS = { 1:'#3b82f6',2:'#3b82f6',3:'#22c55e',4:'#22c55e',5:'#eab308',6:'#eab308',7:'#f97316',8:'#f97316',9:'#ef4444',10:'#ef4444' };
   const back = document.createElement('div');
   back.className = 'modal-backdrop';
@@ -2177,9 +2211,18 @@ function openPSEModal(logTs) {
   back.querySelectorAll('.pse-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const pse = parseInt(btn.dataset.pse);
-      const logs = getLogs();
-      const l = logs.find(x => x.ts === logTs);
-      if (l) { l.pse = pse; setLogs(logs); }
+      if (semana && semana !== 'atual') {
+        const hist2 = getHistory();
+        const hi = hist2.findIndex(h => h.semana_atual == semana);
+        if (hi >= 0 && Array.isArray(hist2[hi].logs)) {
+          const l = hist2[hi].logs.find(x => x.ts === logTs);
+          if (l) { l.pse = pse; setHistory(hist2); }
+        }
+      } else {
+        const logs = getLogs();
+        const l = logs.find(x => x.ts === logTs);
+        if (l) { l.pse = pse; setLogs(logs); }
+      }
       back.remove();
       toast('PSE registrado: ' + pse, 'success');
     });
@@ -3150,7 +3193,7 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.0';
+const APP_VERSION = '4.0.4';
 const CHANGELOG = [
   { v: '4.0', date: '2026-06-18', items: [
     'Nova aba Home com saudação, frase do dia, versículo, volume e próximo treino',
@@ -4035,10 +4078,12 @@ function sincronizarStatusTreinos() {
   const hist = getHistory();
   let mudouHist = false;
   hist.forEach(sw => {
+    const swLogs = Array.isArray(sw.logs) ? sw.logs : [];
     (sw.treinos || []).forEach((t, idx) => {
       if (t.status === 'Concluído') {
-        const tem = logs.some(l => l.semana === sw.semana_atual && l.train_idx === idx);
-        if (!tem) {
+        const temGlobal = logs.some(l => l.semana === sw.semana_atual && l.train_idx === idx);
+        const temLocal = swLogs.some(l => l.semana === sw.semana_atual && l.train_idx === idx);
+        if (!temGlobal && !temLocal) {
           t.status = 'Pendente';
           delete t.data_efetiva;
           mudouHist = true;
