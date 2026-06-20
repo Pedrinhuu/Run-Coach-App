@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.20-1623",
+  "versao": "2026.06.20-1642",
   "data": "2026-06-20",
-  "novidades": ["v4.0.5: Fix pace range, semana duplicada, histórico e carga chart"]
+  "novidades": ["v4.0.6: Debug select semana, campo velocidade para pace"]
 }
