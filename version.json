@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.20-1642",
+  "versao": "2026.06.20-1705",
   "data": "2026-06-20",
-  "novidades": ["v4.0.6: Debug select semana, campo velocidade para pace"]
+  "novidades": ["v4.0.7: Aderência exclui não-corrida, fix próximo treino"]
 }
