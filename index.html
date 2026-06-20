@@ -521,6 +521,12 @@ let currentTab = 'home';
 let trainModeByIdx = {};
 let historicoSubTab = 'treinos';
 const TAB_ORDER = ['home', 'semana', 'historico', 'metricas', 'avaliacao'];
+const DIAS_SEMANA_GLOBAL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const ehTreinoCorrida = (tipo) => {
+  if (!tipo) return false;
+  const t = tipo.toLowerCase();
+  return !t.includes('descanso') && !t.includes('ct') && !t.includes('rest') && !t.includes('recuperação') && !t.includes('cross');
+};
 
 function setTab(name) {
   currentTab = name;
@@ -639,12 +645,18 @@ function renderHome() {
     </div>`;
 
     const treinosAtivos = w.treinos.map((t, idx) => ({ t, idx })).filter(({ t }) =>
-      t.tipo?.toLowerCase() !== 'descanso' && (t.rua || t.esteira)
+      ehTreinoCorrida(t.tipo) && (t.rua || t.esteira)
     );
-    const DIAS_SEMANA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-    const proxItem = treinosAtivos.find(({ t }) =>
-      t.status === 'Pendente' && DIAS_SEMANA.indexOf(t.dia) >= new Date().getDay()
-    );
+    const diaAtualIdx = new Date().getDay();
+    const horaAtual = new Date().getHours();
+    const pendentes = treinosAtivos.filter(({ t }) => t.status === 'Pendente' && ehTreinoCorrida(t.tipo));
+    let proxItem = pendentes.find(({ t }) => {
+      const diaIdx = DIAS_SEMANA_GLOBAL.indexOf(t.dia);
+      if (diaIdx > diaAtualIdx) return true;
+      if (diaIdx === diaAtualIdx && horaAtual < 14) return true;
+      return false;
+    });
+    if (!proxItem) proxItem = pendentes[0] || null;
 
     if (proxItem) {
       const { t, idx } = proxItem;
@@ -660,12 +672,12 @@ function renderHome() {
         <button class="btn" id="btnVerTreino" data-idx="${idx}" style="margin-top:12px">Ver treino</button>
       </div>`;
     } else {
-      const allDone = treinosAtivos.every(({ t }) => t.status === 'Concluído');
-      if (allDone && treinosAtivos.length > 0) {
+      const allDone = pendentes.length === 0 && treinosAtivos.length > 0;
+      if (allDone) {
         html += `<div class="card" style="border:1px solid var(--green);text-align:center;padding:20px">
           <div style="font-size:28px;margin-bottom:8px">✅</div>
           <div style="font-weight:700;font-size:15px;color:var(--green)">Semana concluída!</div>
-          <div class="muted" style="font-size:13px;margin-top:4px">Todos os treinos foram completados</div>
+          <div class="muted" style="font-size:13px;margin-top:4px">Aguardando próxima semana.</div>
         </div>`;
       }
     }
@@ -862,8 +874,8 @@ function renderResumeBanner() {
 }
 
 function calcAderencia(w) {
-  const previstos = (w.treinos || []).filter(t => t.tipo?.toLowerCase() !== 'descanso').length;
-  const concluidos = (w.treinos || []).filter(t => t.tipo?.toLowerCase() !== 'descanso' && t.status === 'Concluído').length;
+  const previstos = (w.treinos || []).filter(t => ehTreinoCorrida(t.tipo)).length;
+  const concluidos = (w.treinos || []).filter(t => ehTreinoCorrida(t.tipo) && t.status === 'Concluído').length;
   return { previstos, concluidos, pct: previstos > 0 ? Math.round((concluidos / previstos) * 100) : null };
 }
 
@@ -897,13 +909,19 @@ function renderSemana() {
   if (w.alerta_coach) html += `<div class="card alert-red"><strong>Atenção do coach:</strong><br>${w.alerta_coach}</div>`;
 
   const treinosAtivos = w.treinos.map((t, idx) => ({ t, idx })).filter(({ t }) =>
-    t.tipo?.toLowerCase() !== 'descanso' && (t.rua || t.esteira)
+    ehTreinoCorrida(t.tipo) && (t.rua || t.esteira)
   );
 
-  const DIAS_SEMANA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-  const proxIdx = treinosAtivos.findIndex(({ t }) =>
-    t.status === 'Pendente' && DIAS_SEMANA.indexOf(t.dia) >= new Date().getDay()
-  );
+  const diaAtualIdxSem = new Date().getDay();
+  const horaAtualSem = new Date().getHours();
+  let proxIdx = treinosAtivos.findIndex(({ t }) => {
+    if (t.status !== 'Pendente') return false;
+    const diaIdx = DIAS_SEMANA_GLOBAL.indexOf(t.dia);
+    if (diaIdx > diaAtualIdxSem) return true;
+    if (diaIdx === diaAtualIdxSem && horaAtualSem < 14) return true;
+    return false;
+  });
+  if (proxIdx < 0) proxIdx = treinosAtivos.findIndex(({ t }) => t.status === 'Pendente');
 
   if (treinosAtivos.length === 0) {
     html += `<div class="empty">Nenhum treino programado para esta semana</div>`;
@@ -1061,7 +1079,8 @@ function calcMetricas() {
   const logsSemana = logs.filter(l => l.semana === w.semana_atual);
   const distSem = logsSemana.reduce((a, l) => a + (l.distancia || 0), 0);
   const tempoSem = logsSemana.reduce((a, l) => a + tempoDeLog(l), 0);
-  const concluidosSem = w.treinos.filter(t => t.status === 'Concluído').length;
+  const treinosCorridaSem = w.treinos.filter(t => ehTreinoCorrida(t.tipo));
+  const concluidosSem = treinosCorridaSem.filter(t => t.status === 'Concluído').length;
   const pseSem = avgNums(logsSemana.map(l => l.pse).filter(x => x != null));
 
   const totLog = logs.length;
@@ -1083,7 +1102,10 @@ function calcMetricas() {
   const naoSeguiu = logs.filter(l => l.seguiu_parametros === false).length;
 
   const semanasNoPlano = hist.length + 1;
-  const treinosPlanejados = semanasNoPlano * 3;
+  let treinosPlanejados = treinosCorridaSem.length;
+  for (const h of hist) {
+    treinosPlanejados += (h.treinos || []).filter(t => ehTreinoCorrida(t.tipo)).length;
+  }
   const adesao = treinosPlanejados > 0 ? (totLog / treinosPlanejados) * 100 : 0;
 
   const porTipo = {};
@@ -1129,7 +1151,7 @@ function calcMetricas() {
   carga4sem.forEach((s, i) => { s.label = `Sem ${i + 1}`; });
 
   return {
-    semanaNum: w.semana_atual, fase: w.fase, concluidosSem, distSem, tempoSem, pseSem,
+    semanaNum: w.semana_atual, fase: w.fase, concluidosSem, previstosSem: treinosCorridaSem.length, distSem, tempoSem, pseSem,
     totLog, distTot, tempoTot, pseTot, paceMedio, melhorPace, semanasNoPlano, adesao,
     joelhoLeve, joelhoMod, naoSeguiu, porTipo, primAvg, ultAvg, evolucao, streak,
     carga4sem,
@@ -1169,7 +1191,7 @@ function renderMetricas() {
     ${mHelp('resumo_semana')}
     <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Semana ${m.semanaNum} · ${escapeHtml(m.fase)}</div>
     <div class="row" style="gap:14px;align-items:flex-start">
-      ${statCard('Treinos', `${m.concluidosSem}/3`)}
+      ${statCard('Treinos', `${m.concluidosSem}/${m.previstosSem}`)}
       ${statCard('Distância', `${m.distSem.toFixed(1)}<span style="font-size:13px;font-weight:600"> km</span>`)}
       ${statCard('Tempo', fmtTempo(m.tempoSem))}
     </div>
@@ -3257,7 +3279,7 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.0.6';
+const APP_VERSION = '4.0.7';
 const CHANGELOG = [
   { v: '4.0', date: '2026-06-18', items: [
     'Nova aba Home com saudação, frase do dia, versículo, volume e próximo treino',
