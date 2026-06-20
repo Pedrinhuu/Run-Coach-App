@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.20-1544",
+  "versao": "2026.06.20-1623",
   "data": "2026-06-20",
-  "novidades": ["v4.0.4: Registro em semana anterior, fix carga fantasma e PSE"]
+  "novidades": ["v4.0.5: Fix pace range, semana duplicada, histórico e carga chart"]
 }
