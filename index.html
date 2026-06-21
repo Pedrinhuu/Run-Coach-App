@@ -1146,8 +1146,15 @@ function calcMetricas() {
     });
     carga4sem.push({ vol });
   }
-  const atualTemConcluido = (w.treinos || []).some(t => ['Concluído', 'Realocado'].includes(t.status));
-  if (atualTemConcluido) carga4sem.push({ vol: calcVolumeSemanal(w) });
+  let volAtual = 0;
+  (w.treinos || []).forEach((t, i) => {
+    if (['Concluído', 'Realocado'].includes(t.status)) {
+      const mode = trainModeByIdx[i] || 'rua';
+      const km = getDistanciaKm(t, mode);
+      if (km) volAtual += km;
+    }
+  });
+  carga4sem.push({ vol: volAtual, isAtual: true });
   carga4sem.forEach((s, i) => { s.label = `Sem ${i + 1}`; });
 
   return {
@@ -1170,7 +1177,8 @@ function renderMetricas() {
   const m = calcMetricas();
   const logs = getLogs();
 
-  if (logs.length === 0) {
+  const histLogs = getHistory().reduce((acc, sw) => acc + (Array.isArray(sw.logs) ? sw.logs.length : 0), 0);
+  if (logs.length === 0 && histLogs === 0) {
     return `<h1>Métricas</h1><div class="empty">Registre seu primeiro treino para ver as métricas aqui.</div>`;
   }
 
@@ -1228,14 +1236,15 @@ function renderMetricas() {
     const labelFs = nBars <= 4 ? 11 : nBars <= 6 ? 10 : 9;
     m.carga4sem.forEach((s, i) => {
       const vol = s.vol || 0;
-      const h = vol > 0 ? Math.max(4, (vol / maxVol) * chartH) : 0;
+      const h = vol > 0 ? Math.max(4, (vol / maxVol) * chartH) : 4;
       const x = pad + i * (barW + gap);
       const y = padTop + chartH - h;
-      const isAtual = i === nBars - 1;
-      const opacity = isAtual ? '1' : '0.6';
+      const isAtual = !!s.isAtual;
+      const opacity = isAtual ? (vol > 0 ? '1' : '0.4') : '0.6';
       bars += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="#f97316" opacity="${opacity}"/>`;
-      const labelTxt = `${s.label} · ${vol.toFixed(1)}km`;
-      bars += `<text x="${x + barW/2}" y="${padTop + chartH + 15}" text-anchor="middle" font-size="${labelFs}" fill="#9ca3af">${escapeHtml(labelTxt)}</text>`;
+      const labelTxt = `${s.label} · ${vol > 0 ? vol.toFixed(1) : '0'}km`;
+      const labelColor = vol === 0 ? '#6b7280' : '#9ca3af';
+      bars += `<text x="${x + barW/2}" y="${padTop + chartH + 15}" text-anchor="middle" font-size="${labelFs}" fill="${labelColor}">${escapeHtml(labelTxt)}</text>`;
     });
     html += `<div class="card" style="position:relative">
       ${mHelp('carga')}
@@ -3279,8 +3288,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.0.7';
+const APP_VERSION = '4.0.8';
 const CHANGELOG = [
+  { v: '4.0.8', date: '2026-06-21', items: [
+    'Gráfico de carga: semana atual sempre visível, mesmo com 0km concluídos',
+    'Gráfico de carga: mostra apenas volume concluído (não planejado)',
+  ]},
   { v: '4.0', date: '2026-06-18', items: [
     'Nova aba Home com saudação, frase do dia, versículo, volume e próximo treino',
     'Aba Semana simplificada: apenas header, treinos e aderência',
