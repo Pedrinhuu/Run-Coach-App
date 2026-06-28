@@ -525,7 +525,7 @@ const DIAS_SEMANA_GLOBAL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sext
 const ehTreinoCorrida = (tipo) => {
   if (!tipo) return false;
   const t = tipo.toLowerCase();
-  return !t.includes('descanso') && !t.includes('ct') && !t.includes('rest') && !t.includes('recuperação') && !t.includes('cross');
+  return !t.includes('descanso') && !t.includes('rest') && !t.includes('recuperação');
 };
 
 function setTab(name) {
@@ -3288,8 +3288,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.0.8';
+const APP_VERSION = '4.0.9';
 const CHANGELOG = [
+  { v: '4.0.9', date: '2026-06-28', items: [
+    'ehTreinoCorrida: CT e Cross Training agora contam como treino válido',
+  ]},
   { v: '4.0.8', date: '2026-06-21', items: [
     'Gráfico de carga: semana atual sempre visível, mesmo com 0km concluídos',
     'Gráfico de carga: mostra apenas volume concluído (não planejado)',
