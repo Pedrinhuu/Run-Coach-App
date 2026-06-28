@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.21-1900",
-  "data": "2026-06-21",
-  "novidades": ["v4.0.8: Carga chart mostra semana atual com 0km, volume só concluído"]
+  "versao": "2026.06.28-2044",
+  "data": "2026-06-28",
+  "novidades": ["v4.0.9: ehTreinoCorrida permite CT e Cross Training como treino válido"]
 }
