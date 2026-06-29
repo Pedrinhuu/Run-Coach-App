@@ -1358,24 +1358,30 @@ function buildIntervalsDescription(bloco, zonas) {
   const stepLine = (min, zona) => `- ${min}m Z${zoneNum(zona)} HR${paceCue(zona)}`;
 
   const zonaPrincipal = bloco.zona_principal || 'Z2';
-  const sections = [];
+  const parts = [];
 
+  if (bloco.aquecimento) parts.push(`Aquecimento: ${bloco.aquecimento}`);
+
+  const mainLines = [];
   if (bloco.intervalos && bloco.intervalos.ciclos && bloco.intervalos.fases) {
     const { ciclos, fases } = bloco.intervalos;
-    sections.push(`Main Set ${ciclos}x`);
+    mainLines.push(`Main Set ${ciclos}x`);
     const zonaFallback = ['Z2', 'Z3', 'Z4', 'Z5'];
     fases.forEach((f, i) => {
       const min = Math.max(1, Math.round((f.duracao_segundos || 60) / 60));
       const zona = f.zona_fase || zonaFallback[i] || zonaPrincipal;
-      sections.push(stepLine(min, zona));
+      mainLines.push(stepLine(min, zona));
     });
   } else {
     const principalMin = calcPrincipalMin(bloco);
-    sections.push('Main Set');
-    sections.push(stepLine(principalMin, zonaPrincipal));
+    mainLines.push('Main Set');
+    mainLines.push(stepLine(principalMin, zonaPrincipal));
   }
+  parts.push(mainLines.join('\n'));
 
-  return sections.join('\n');
+  if (bloco.desaquecimento) parts.push(`Desaquecimento: ${bloco.desaquecimento}`);
+
+  return parts.join('\n\n');
 }
 
 function blocoTemAqDq(bloco) {
