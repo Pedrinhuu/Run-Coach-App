@@ -1357,19 +1357,11 @@ function buildIntervalsDescription(bloco, zonas) {
   };
   const stepLine = (min, zona) => `- ${min}m Z${zoneNum(zona)} HR${paceCue(zona)}`;
 
-  const aqMin = extrairMinutos(bloco.aquecimento) || 5;
-  const dqMin = extrairMinutos(bloco.desaquecimento) || 5;
-  const zonaAq = bloco.zona_aquecimento || 'Z1';
-  const zonaDq = bloco.zona_desaquecimento || 'Z1';
   const zonaPrincipal = bloco.zona_principal || 'Z2';
-
   const sections = [];
-  sections.push('Warmup');
-  sections.push(stepLine(aqMin, zonaAq));
 
   if (bloco.intervalos && bloco.intervalos.ciclos && bloco.intervalos.fases) {
     const { ciclos, fases } = bloco.intervalos;
-    sections.push('');
     sections.push(`Main Set ${ciclos}x`);
     const zonaFallback = ['Z2', 'Z3', 'Z4', 'Z5'];
     fases.forEach((f, i) => {
@@ -1378,18 +1370,38 @@ function buildIntervalsDescription(bloco, zonas) {
       sections.push(stepLine(min, zona));
     });
   } else {
-    const totalMin = extrairMinutos(bloco.duracao_total) || 30;
-    const principalMin = Math.max(1, totalMin - aqMin - dqMin);
-    sections.push('');
+    const principalMin = calcPrincipalMin(bloco);
     sections.push('Main Set');
     sections.push(stepLine(principalMin, zonaPrincipal));
   }
 
-  sections.push('');
-  sections.push('Cooldown');
-  sections.push(stepLine(dqMin, zonaDq));
-
   return sections.join('\n');
+}
+
+function blocoTemAqDq(bloco) {
+  if (!bloco) return false;
+  const zonaAq = bloco.zona_aquecimento;
+  const zonaPr = bloco.zona_principal;
+  if (zonaAq && zonaPr && zonaAq === zonaPr) return false;
+  return !!(bloco.aquecimento || bloco.desaquecimento);
+}
+
+function calcPrincipalMin(bloco) {
+  const totalMin = extrairMinutos(bloco.duracao_total) || 30;
+  if (!blocoTemAqDq(bloco)) return totalMin;
+  const aqMin = extrairMinutos(bloco.aquecimento) || 5;
+  const dqMin = extrairMinutos(bloco.desaquecimento) || 5;
+  return Math.max(1, totalMin - aqMin - dqMin);
+}
+
+function calcMovingTimeSegundos(bloco) {
+  if (!bloco) return 1800;
+  if (bloco.intervalos && bloco.intervalos.ciclos && bloco.intervalos.fases) {
+    const { ciclos, fases } = bloco.intervalos;
+    const somaFases = fases.reduce((acc, f) => acc + (f.duracao_segundos || 60), 0);
+    return ciclos * somaFases;
+  }
+  return calcPrincipalMin(bloco) * 60;
 }
 
 async function enviarParaIntervals(treino, modalidade, dataISO) {
@@ -1407,7 +1419,7 @@ async function enviarParaIntervals(treino, modalidade, dataISO) {
     bloco.duracao_total ? `Duração: ${bloco.duracao_total}` : '',
   ].filter(Boolean).join('\n');
 
-  const duracaoSegundos = parseDuracaoParaSegundos(bloco.duracao_total);
+  const duracaoSegundos = calcMovingTimeSegundos(bloco);
 
   const payload = [{
     category: 'WORKOUT',
@@ -3288,8 +3300,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.0.9';
+const APP_VERSION = '4.0.10';
 const CHANGELOG = [
+  { v: '4.0.10', date: '2026-06-29', items: [
+    'Intervals.icu: description envia apenas Main Set (sem Warmup/Cooldown)',
+    'Intervals.icu: moving_time reflete só o bloco principal',
+  ]},
   { v: '4.0.9', date: '2026-06-28', items: [
     'ehTreinoCorrida: CT e Cross Training agora contam como treino válido',
   ]},
