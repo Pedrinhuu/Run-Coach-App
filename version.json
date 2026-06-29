@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.29-1318",
+  "versao": "2026.06.29-1403",
   "data": "2026-06-29",
-  "novidades": ["v4.0.10: Intervals.icu envia apenas Main Set, moving_time só bloco principal"]
+  "novidades": ["v4.0.10: Intervals.icu description inclui aquecimento/desaquecimento como texto informativo"]
 }
