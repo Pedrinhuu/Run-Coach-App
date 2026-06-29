@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.28-2044",
-  "data": "2026-06-28",
-  "novidades": ["v4.0.9: ehTreinoCorrida permite CT e Cross Training como treino válido"]
+  "versao": "2026.06.29-1318",
+  "data": "2026-06-29",
+  "novidades": ["v4.0.10: Intervals.icu envia apenas Main Set, moving_time só bloco principal"]
 }
