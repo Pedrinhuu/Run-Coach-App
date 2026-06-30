@@ -986,13 +986,14 @@ function renderSemana() {
   const protStatus = getProtocoloStatus();
   const hoje = new Date().toISOString().split('T')[0];
   const protConcluido = protStatus.some(r => r.data === hoje && r.concluido);
+  const pj = getProtocoloJoelho();
   html += `<div class="card">
     <div class="row between">
-      <div><h3>${PROTOCOLO_JOELHO.dia} — ${PROTOCOLO_JOELHO.nome}</h3></div>
+      <div><h3>${pj.dia || 'Terça'} — ${pj.nome || 'Protocolo de Fortalecimento do Joelho'}</h3></div>
       ${statusBadge(protConcluido ? 'Concluído' : 'Pendente')}
     </div>
     <div class="muted" style="margin-top:4px;font-size:12px">Fortalecimento muscular para proteção articular do joelho.</div>
-    <div class="muted" style="margin-top:4px;font-size:12px">${PROTOCOLO_JOELHO.exercicios.length} exercícios · ~${PROTOCOLO_JOELHO.duracao_estimada}</div>
+    <div class="muted" style="margin-top:4px;font-size:12px">${pj.exercicios.length} exercícios · ~${pj.duracao_estimada || '45-55 min'}</div>
     <button class="btn outline" id="btnProtocoloCarrossel" style="margin-top:12px;font-size:13px;padding:10px;width:100%">Mostrar treino</button>
   </div>`;
 
@@ -1389,31 +1390,50 @@ const INTERVALS_KEY = 'runcoach_intervals_key';
 function getIntervalsKey() { return localStorage.getItem(INTERVALS_KEY) || ''; }
 function setIntervalsKey(key) { localStorage.setItem(INTERVALS_KEY, key); }
 
-const PROTOCOLO_JOELHO = {
+const PROTOCOLO_JOELHO_KEY = 'runcoach_protocolo_joelho';
+
+const PROTOCOLO_JOELHO_DEFAULT = {
   nome: 'Protocolo de Fortalecimento do Joelho',
   dia: 'Terça',
   duracao_estimada: '45-55 min',
   exercicios: [
-    { nome: 'Ponte Glútea com Peso', series: 3, reps: 15, descanso_segundos: 60, duracao_serie_segundos: 45,
+    { nome: 'Ponte Glútea com Peso', series: 3, reps: 15, descanso_segundos: 60,
       execucao: ['Deite de costas, joelhos flexionados a 90°, pés apoiados no chão','Coloque um anilho ou haltere sobre o quadril','Empurre o quadril para cima contraindo o glúteo no topo','2s subindo, 2s no pico, 2s descendo','Não hiperestenda a lombar no topo'],
       carga: 'Sem peso inicialmente. Adicione quando conseguir manter a contração no topo por 2s sem compensar com a lombar.' },
-    { nome: 'Cadeira Abdutora', series: 3, reps: 15, descanso_segundos: 60, duracao_serie_segundos: 45,
+    { nome: 'Cadeira Abdutora', series: 3, reps: 15, descanso_segundos: 60,
       execucao: ['Sente com as costas apoiadas, joelhos a 90°','Almofadas na parte externa das coxas','Abra as pernas contra a resistência de forma controlada','2s abrindo, 1s no pico, 2s voltando','Não bata as pernas ao retornar'],
       carga: 'Leve a moderada. Deve sentir o glúteo lateral, não o joelho.' },
-    { nome: 'Agachamento no Smith', series: 3, reps: 12, descanso_segundos: 90, duracao_serie_segundos: 60,
+    { nome: 'Agachamento no Smith', series: 3, reps: 12, descanso_segundos: 90,
       execucao: ['Pés afastados na largura dos ombros, ligeiramente abertos (30°)','Barra apoiada na parte média do trapézio','Desça até 90° de joelho, não além','Joelhos sempre apontando na direção dos pés','3s descendo, 1s subindo','Tronco ereto e core contraído'],
       carga: 'Sem peso adicional inicialmente. Adicione só com técnica sólida.' },
-    { nome: 'Leg Press 45° Unilateral', series: 3, reps: 12, descanso_segundos: 60, duracao_serie_segundos: 45,
+    { nome: 'Leg Press 45° Unilateral', series: 3, reps: 12, descanso_segundos: 60,
       execucao: ['Uma perna de cada vez, pé centralizado na plataforma','Desça até 90° de flexão, nunca além','3s descendo, 1s subindo','Joelho alinhado com o segundo dedo do pé','Não trave o joelho no topo'],
       carga: '20-30% do que usaria bilateral. Objetivo é ativação, não carga máxima.' },
-    { nome: 'Mesa Flexora', series: 3, reps: 12, descanso_segundos: 60, duracao_serie_segundos: 45,
+    { nome: 'Mesa Flexora', series: 3, reps: 12, descanso_segundos: 60,
       execucao: ['Deite de bruços, joelhos levemente fora da borda','Flexione trazendo os calcanhares aos glúteos','2s subindo, 1s no pico, 3s descendo (excêntrico lento é o mais importante)','Não levante o quadril durante o movimento'],
       carga: 'Moderada. O excêntrico lento de 3s protege o tendão.' },
-    { nome: 'Elevação de Panturrilha em Pé', series: 3, reps: 20, descanso_segundos: 45, duracao_serie_segundos: 30,
+    { nome: 'Elevação de Panturrilha em Pé', series: 3, reps: 20, descanso_segundos: 45,
       execucao: ['Pés paralelos na largura do quadril','Pontas dos pés em um degrau para amplitude total','Suba nas pontas dos pés o máximo possível','1s subindo, 1s no pico, 3s descendo (excêntrico lento)'],
       carga: 'Peso corporal. Pode evoluir para unilateral quando ficar fácil.' },
   ]
 };
+
+function getProtocoloJoelho() {
+  try {
+    const raw = localStorage.getItem(PROTOCOLO_JOELHO_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && Array.isArray(p.exercicios) && p.exercicios.length > 0) return p;
+    }
+  } catch {}
+  return PROTOCOLO_JOELHO_DEFAULT;
+}
+
+function validarProtocoloJoelho(pj) {
+  if (!pj || typeof pj !== 'object') return false;
+  if (!Array.isArray(pj.exercicios) || pj.exercicios.length === 0) return false;
+  return pj.exercicios.every(ex => ex.nome && ex.series && ex.reps && Array.isArray(ex.execucao));
+}
 
 
 /* ========== PROTOCOLO JOELHO — CARROSSEL ========== */
@@ -1447,7 +1467,7 @@ function calcProtocoloStreak() {
 }
 
 function openProtocoloCarrossel() {
-  const exs = PROTOCOLO_JOELHO.exercicios;
+  const exs = getProtocoloJoelho().exercicios;
   let idx = parseInt(localStorage.getItem(PROTOCOLO_POS_KEY)) || 0;
   if (idx < 0 || idx >= exs.length) idx = 0;
 
@@ -2640,6 +2660,14 @@ function previewSemana(back) {
       <div class="train-section"><div class="label">Duração</div><div class="text num">${escapeHtml(t.rua?.duracao_total || '-')}</div></div>
     </div>`;
   }
+  if (nextWeek.protocolo_joelho) {
+    const pjValid = validarProtocoloJoelho(nextWeek.protocolo_joelho);
+    html += `<div class="card" style="font-size:13px">
+      <div class="row between"><strong>Protocolo de Joelho</strong>
+      ${pjValid ? '<span class="badge green">válido</span>' : '<span class="badge red">formato inválido</span>'}</div>
+      ${pjValid ? `<div class="muted" style="margin-top:4px">${nextWeek.protocolo_joelho.exercicios.length} exercícios · ${escapeHtml(nextWeek.protocolo_joelho.duracao_estimada || '')}</div>` : ''}
+    </div>`;
+  }
   if (nextWeek.observacao_coach) html += `<div class="card" style="background:var(--bg2);border:none;font-size:13px">${escapeHtml(nextWeek.observacao_coach)}</div>`;
   if (Array.isArray(nextWeek.estimativas_provas) && nextWeek.estimativas_provas.length > 0) {
     const races = getRaces();
@@ -2745,10 +2773,21 @@ function previewSemana(back) {
 
       const resumo = aplicarEstimativasProvas(nextWeek.estimativas_provas);
 
+      let protImportado = false;
+      let protErro = false;
+      if (nextWeek.protocolo_joelho) {
+        if (validarProtocoloJoelho(nextWeek.protocolo_joelho)) {
+          localStorage.setItem(PROTOCOLO_JOELHO_KEY, JSON.stringify(nextWeek.protocolo_joelho));
+          protImportado = true;
+        } else {
+          protErro = true;
+        }
+      }
+
       trainModeByIdx = {};
       back.remove();
       setTab('semana');
-      let msg = 'Nova semana importada';
+      let msg = protImportado ? 'Semana e protocolo importados' : 'Nova semana importada';
       if (resumo.atualizadas || resumo.criadas) {
         const partes = [];
         if (resumo.atualizadas) partes.push(`${resumo.atualizadas} corrida${resumo.atualizadas>1?'s':''} atualizada${resumo.atualizadas>1?'s':''}`);
@@ -2756,6 +2795,9 @@ function previewSemana(back) {
         msg += ` · ${partes.join(', ')}`;
       }
       toast(msg, 'success');
+      if (protErro) {
+        setTimeout(() => toast('Protocolo de joelho não pôde ser lido. Verifique o formato.', 'error'), 1500);
+      }
     } catch (e) {
       console.error('Erro ao importar semana:', e);
       toast('Erro ao importar: ' + e.message, 'error');
@@ -3491,8 +3533,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.1.0';
+const APP_VERSION = '4.1.1';
 const CHANGELOG = [
+  { v: '4.1.1', date: '2026-06-30', items: [
+    'Importação unificada: JSON pode incluir protocolo_joelho junto com a semana',
+    'Protocolo de joelho agora lido de localStorage (atualizável via importação)',
+  ]},
   { v: '4.1.0', date: '2026-06-30', items: [
     'Carrossel guiado do Protocolo de Fortalecimento do Joelho na aba Semana',
     'Card de métricas separado com streak semanal do protocolo',
