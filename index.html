@@ -929,6 +929,7 @@ function renderSemana() {
   ${renderResumeBanner()}`;
   if (w.alerta_coach) html += `<div class="card alert-red"><strong>Atenção do coach:</strong><br>${w.alerta_coach}</div>`;
 
+  const ORDEM_DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
   const treinosAtivos = w.treinos.map((t, idx) => ({ t, idx })).filter(({ t }) =>
     ehTreinoCorrida(t.tipo) && (t.rua || t.esteira)
   );
@@ -944,58 +945,74 @@ function renderSemana() {
   });
   if (proxIdx < 0) proxIdx = treinosAtivos.findIndex(({ t }) => t.status === 'Pendente');
 
-  if (treinosAtivos.length === 0) {
+  const items = treinosAtivos.map(({ t, idx }, arrIdx) => ({
+    tipo: 'corrida', dia: t.dia, t, idx, arrIdx
+  }));
+  const pj = getProtocoloJoelho();
+  if (pj && pj.exercicios && pj.exercicios.length > 0) {
+    items.push({ tipo: 'protocolo', dia: pj.dia || 'Terça' });
+  }
+  items.sort((a, b) => {
+    const ia = ORDEM_DIAS.indexOf(a.dia);
+    const ib = ORDEM_DIAS.indexOf(b.dia);
+    if (ia !== ib) return ia - ib;
+    return a.tipo === 'corrida' ? -1 : 1;
+  });
+
+  if (items.length === 0) {
     html += `<div class="empty">Nenhum treino programado para esta semana</div>`;
   }
 
-  treinosAtivos.forEach(({ t, idx }, arrIdx) => {
-    const mode = trainModeByIdx[idx] || 'rua';
-    const data = t[mode] || null;
-    const showRealocar = isPastPredicted(idx);
-
-    const isNextPending = arrIdx === proxIdx;
-    const cardBorder = isNextPending ? 'border:1px solid #f97316' : '';
-
-    const distKm = getDistanciaKm(t, mode);
-    const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
-    html += `<div class="card" ${isNextPending ? 'id="nextPendingCard"' : ''} style="${cardBorder}">
-      ${zoneBarHtml(data)}
-      <div class="row between">
-        <div><h3>${t.dia} — ${t.tipo}</h3>${t.data_prevista ? `<div class="muted" style="font-size:11px;margin-top:2px">Data: ${fmtDateBR(t.data_prevista)}</div>`:''}</div>
-        ${statusBadge(t.status)}
-      </div>
-      <div class="muted" style="margin-top:4px;font-size:12px">${t.objetivo||''}</div>
-      <div class="toggle">
-        <button data-mode-idx="${idx}" data-mode="rua" class="${mode==='rua'?'active':''}">Rua</button>
-        <button data-mode-idx="${idx}" data-mode="esteira" class="${mode==='esteira'?'active':''}">Esteira</button>
-      </div>
-      <div class="train-section"><div class="row between"><div class="label">Aquecimento</div>${zoneBadgeHtml(data?.zona_aquecimento)}</div><div class="text">${data?.aquecimento||''}</div></div>
-      <div class="train-section"><div class="row between"><div class="label">Principal</div>${zoneBadgeHtml(data?.zona_principal)}</div><div class="text">${data?.principal||''}</div></div>
-      <div class="train-section"><div class="row between"><div class="label">Desaquecimento</div>${zoneBadgeHtml(data?.zona_desaquecimento)}</div><div class="text">${data?.desaquecimento||''}</div></div>
-      <div class="train-section"><div class="label">Duração total</div><div class="text num">${duracaoDistHtml}</div></div>
-      <button class="btn start" data-action="start" data-idx="${idx}" style="margin-top:12px">▶ Iniciar treino</button>
-      ${getIntervalsKey()
-        ? `<button class="btn-intervals" data-action="send-intervals" data-idx="${idx}" style="margin-top:8px"><span class="emoji">⌚</span> Enviar para relógio</button>`
-        : `<button class="btn-intervals" data-action="config-intervals" style="margin-top:8px"><span class="emoji">⌚</span> Configurar relógio</button>`}
-      <div class="btn-row" style="margin-top:10px">
-        <button class="btn" data-action="log" data-idx="${idx}">Registrar</button>
-        ${showRealocar ? `<button class="btn outline" data-action="realocar" data-idx="${idx}">Realocar</button>`:''}
-      </div>
-    </div>`;
-  });
   const protStatus = getProtocoloStatus();
   const hoje = new Date().toISOString().split('T')[0];
   const protConcluido = protStatus.some(r => r.data === hoje && r.concluido);
-  const pj = getProtocoloJoelho();
-  html += `<div class="card">
-    <div class="row between">
-      <div><h3>${pj.dia || 'Terça'} — ${pj.nome || 'Protocolo de Fortalecimento do Joelho'}</h3></div>
-      ${statusBadge(protConcluido ? 'Concluído' : 'Pendente')}
-    </div>
-    <div class="muted" style="margin-top:4px;font-size:12px">Fortalecimento muscular para proteção articular do joelho.</div>
-    <div class="muted" style="margin-top:4px;font-size:12px">${pj.exercicios.length} exercícios · ~${pj.duracao_estimada || '45-55 min'}</div>
-    <button class="btn outline" id="btnProtocoloCarrossel" style="margin-top:12px;font-size:13px;padding:10px;width:100%">Mostrar treino</button>
-  </div>`;
+
+  for (const item of items) {
+    if (item.tipo === 'corrida') {
+      const { t, idx, arrIdx } = item;
+      const mode = trainModeByIdx[idx] || 'rua';
+      const data = t[mode] || null;
+      const showRealocar = isPastPredicted(idx);
+      const isNextPending = arrIdx === proxIdx;
+      const cardBorder = isNextPending ? 'border:1px solid #f97316' : '';
+      const distKm = getDistanciaKm(t, mode);
+      const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
+      html += `<div class="card" ${isNextPending ? 'id="nextPendingCard"' : ''} style="${cardBorder}">
+        ${zoneBarHtml(data)}
+        <div class="row between">
+          <div><h3>${t.dia} — ${t.tipo}</h3>${t.data_prevista ? `<div class="muted" style="font-size:11px;margin-top:2px">Data: ${fmtDateBR(t.data_prevista)}</div>`:''}</div>
+          ${statusBadge(t.status)}
+        </div>
+        <div class="muted" style="margin-top:4px;font-size:12px">${t.objetivo||''}</div>
+        <div class="toggle">
+          <button data-mode-idx="${idx}" data-mode="rua" class="${mode==='rua'?'active':''}">Rua</button>
+          <button data-mode-idx="${idx}" data-mode="esteira" class="${mode==='esteira'?'active':''}">Esteira</button>
+        </div>
+        <div class="train-section"><div class="row between"><div class="label">Aquecimento</div>${zoneBadgeHtml(data?.zona_aquecimento)}</div><div class="text">${data?.aquecimento||''}</div></div>
+        <div class="train-section"><div class="row between"><div class="label">Principal</div>${zoneBadgeHtml(data?.zona_principal)}</div><div class="text">${data?.principal||''}</div></div>
+        <div class="train-section"><div class="row between"><div class="label">Desaquecimento</div>${zoneBadgeHtml(data?.zona_desaquecimento)}</div><div class="text">${data?.desaquecimento||''}</div></div>
+        <div class="train-section"><div class="label">Duração total</div><div class="text num">${duracaoDistHtml}</div></div>
+        <button class="btn start" data-action="start" data-idx="${idx}" style="margin-top:12px">▶ Iniciar treino</button>
+        ${getIntervalsKey()
+          ? `<button class="btn-intervals" data-action="send-intervals" data-idx="${idx}" style="margin-top:8px"><span class="emoji">⌚</span> Enviar para relógio</button>`
+          : `<button class="btn-intervals" data-action="config-intervals" style="margin-top:8px"><span class="emoji">⌚</span> Configurar relógio</button>`}
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn" data-action="log" data-idx="${idx}">Registrar</button>
+          ${showRealocar ? `<button class="btn outline" data-action="realocar" data-idx="${idx}">Realocar</button>`:''}
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="card">
+        <div class="row between">
+          <div><h3>${pj.dia || 'Terça'} — ${pj.nome || 'Protocolo de Fortalecimento do Joelho'}</h3></div>
+          ${statusBadge(protConcluido ? 'Concluído' : 'Pendente')}
+        </div>
+        <div class="muted" style="margin-top:4px;font-size:12px">Fortalecimento muscular para proteção articular do joelho.</div>
+        <div class="muted" style="margin-top:4px;font-size:12px">${pj.exercicios.length} exercícios · ~${pj.duracao_estimada || '45-55 min'}</div>
+        <button class="btn outline" id="btnProtocoloCarrossel" style="margin-top:12px;font-size:13px;padding:10px;width:100%">Mostrar treino</button>
+      </div>`;
+    }
+  }
 
   html += `<button class="btn outline" id="btnImportarSemana" style="margin-top:16px">📥 Importar próxima semana do coach</button>`;
   return html;
