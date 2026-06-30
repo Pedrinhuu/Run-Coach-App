@@ -1010,7 +1010,7 @@ function renderSemana() {
         </div>
         <div class="muted" style="margin-top:4px;font-size:12px">Fortalecimento muscular para proteção articular do joelho.</div>
         <div class="muted" style="margin-top:4px;font-size:12px">${pj.exercicios.length} exercícios · ~${pj.duracao_estimada || '45-55 min'}</div>
-        <button class="btn" id="btnProtocoloCarrossel" style="margin-top:12px;font-size:13px;padding:10px;width:100%;background:#f97316;color:#fff;border:none">Mostrar treino</button>
+        <button class="btn" id="btnProtocoloCarrossel" style="margin-top:12px;font-size:13px;padding:10px;width:100%">Mostrar treino</button>
       </div>`;
     }
   }
@@ -3606,8 +3606,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.1.4';
+const APP_VERSION = '4.1.5';
 const CHANGELOG = [
+  { v: '4.1.5', date: '2026-06-30', items: [
+    'Botão Mostrar treino usa a mesma cor dos demais botões dos cards',
+  ]},
   { v: '4.1.4', date: '2026-06-30', items: [
     'Protocolo concluído agora soma na aderência (Home, Semana e Métricas)',
     'Registros do protocolo aparecem no Histórico, com opção de excluir',
