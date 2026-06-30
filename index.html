@@ -546,7 +546,7 @@ const DIAS_SEMANA_GLOBAL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sext
 const ehTreinoCorrida = (tipo) => {
   if (!tipo) return false;
   const t = tipo.toLowerCase();
-  return !t.includes('descanso') && !t.includes('rest') && !t.includes('recuperação');
+  return !t.includes('descanso') && !t.includes('rest') && !t.includes('recuperação') && !t.includes('protocolo') && !t.includes('fortalecimento');
 };
 
 function setTab(name) {
