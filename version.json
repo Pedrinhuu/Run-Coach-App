@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.30-1152",
+  "versao": "2026.06.30-1154",
   "data": "2026-06-30",
-  "novidades": ["v4.1.0: Remove envio de protocolo ao Intervals.icu, mantém carrossel guiado"]
+  "novidades": ["v4.1.1: Importação unificada aceita protocolo_joelho no JSON da semana"]
 }
