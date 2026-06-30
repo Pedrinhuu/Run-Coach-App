@@ -896,7 +896,8 @@ function renderResumeBanner() {
 
 function calcAderencia(w) {
   const previstos = (w.treinos || []).filter(t => ehTreinoCorrida(t.tipo)).length;
-  const concluidos = (w.treinos || []).filter(t => ehTreinoCorrida(t.tipo) && t.status === 'Concluído').length;
+  let concluidos = (w.treinos || []).filter(t => ehTreinoCorrida(t.tipo) && t.status === 'Concluído').length;
+  if (weekHasProtocolo(w) && protocoloConcluidoNaSemanaAtual()) concluidos += 1;
   return { previstos, concluidos, pct: previstos > 0 ? Math.round((concluidos / previstos) * 100) : null };
 }
 
@@ -1009,7 +1010,7 @@ function renderSemana() {
         </div>
         <div class="muted" style="margin-top:4px;font-size:12px">Fortalecimento muscular para proteção articular do joelho.</div>
         <div class="muted" style="margin-top:4px;font-size:12px">${pj.exercicios.length} exercícios · ~${pj.duracao_estimada || '45-55 min'}</div>
-        <button class="btn outline" id="btnProtocoloCarrossel" style="margin-top:12px;font-size:13px;padding:10px;width:100%">Mostrar treino</button>
+        <button class="btn" id="btnProtocoloCarrossel" style="margin-top:12px;font-size:13px;padding:10px;width:100%;background:#f97316;color:#fff;border:none">Mostrar treino</button>
       </div>`;
     }
   }
@@ -1042,10 +1043,33 @@ function renderTreinosSubTab() {
       for (const l of sw.logs) allLogs.push(l);
     }
   }
-  const logs = allLogs.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-  if (logs.length === 0) return `<div class="empty">Nenhum treino registrado ainda.</div>`;
+  const logs = allLogs.slice();
+  const protStatus = getProtocoloStatus();
+  const items = [];
+  for (const l of logs) items.push({ kind: 'corrida', data: l.data || '', log: l });
+  protStatus.forEach((r, i) => {
+    if (r.concluido) items.push({ kind: 'protocolo', data: r.data || '', protIdx: i, reg: r });
+  });
+  items.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  if (items.length === 0) return `<div class="empty">Nenhum treino registrado ainda.</div>`;
   let html = '';
-  for (const l of logs) {
+  for (const item of items) {
+    if (item.kind === 'protocolo') {
+      const r = item.reg;
+      const d = new Date(item.data + 'T12:00:00');
+      const dia = DIAS_NOMES[d.getDay()];
+      const nEx = r.exercicios != null ? r.exercicios : (getProtocoloJoelho().exercicios || []).length;
+      html += `<div class="history-item">
+        <div class="meta"><strong>${fmtDateBR(item.data)} · ${dia}</strong></div>
+        <div class="muted" style="font-size:13px">Protocolo de Fortalecimento do Joelho</div>
+        <div class="row" style="gap:12px;font-size:13px"><span class="num">${nEx} exercícios concluídos</span></div>
+        <div class="row" style="gap:8px;margin-top:8px">
+          <button class="btn outline" data-action="delete-prot" data-prot-idx="${item.protIdx}" style="flex:1;padding:8px;font-size:12px;color:var(--red);border-color:var(--red)">Excluir</button>
+        </div>
+      </div>`;
+      continue;
+    }
+    const l = item.log;
     const d = new Date(l.data + 'T12:00:00');
     const dia = DIAS_NOMES[d.getDay()];
     const paceColor = l.desvio_pace == null ? 'muted' : Math.abs(l.desvio_pace) <= 30 ? 'green' : Math.abs(l.desvio_pace) <= 45 ? 'orange' : 'red';
@@ -1132,7 +1156,8 @@ function calcMetricas() {
   const distSem = logsSemana.reduce((a, l) => a + (l.distancia || 0), 0);
   const tempoSem = logsSemana.reduce((a, l) => a + tempoDeLog(l), 0);
   const treinosCorridaSem = w.treinos.filter(t => ehTreinoCorrida(t.tipo));
-  const concluidosSem = treinosCorridaSem.filter(t => t.status === 'Concluído').length;
+  let concluidosSem = treinosCorridaSem.filter(t => t.status === 'Concluído').length;
+  if (weekHasProtocolo(w) && protocoloConcluidoNaSemanaAtual()) concluidosSem += 1;
   const pseSem = avgNums(logsSemana.map(l => l.pse).filter(x => x != null));
 
   const totLog = logs.length;
@@ -1461,6 +1486,25 @@ function getProtocoloStatus() {
   try { return JSON.parse(localStorage.getItem(PROTOCOLO_STATUS_KEY)) || []; } catch { return []; }
 }
 
+function mondayISOOf(d) {
+  const dt = new Date(d);
+  const day = dt.getDay();
+  dt.setDate(dt.getDate() + ((day === 0 ? -6 : 1) - day));
+  return dt.toISOString().split('T')[0];
+}
+
+function weekHasProtocolo(w) {
+  return (w && Array.isArray(w.treinos)) && w.treinos.some(t => {
+    const tp = (t.tipo || '').toLowerCase();
+    return tp.includes('protocolo') || tp.includes('fortalecimento');
+  });
+}
+
+function protocoloConcluidoNaSemanaAtual() {
+  const semMonday = mondayISOOf(new Date().toISOString().split('T')[0]);
+  return getProtocoloStatus().some(r => r.concluido && mondayISOOf(r.data) === semMonday);
+}
+
 function calcProtocoloStreak() {
   const regs = getProtocoloStatus().filter(r => r.concluido);
   if (regs.length === 0) return 0;
@@ -1533,7 +1577,7 @@ function openProtocoloCarrossel() {
     if (isLast) {
       overlay.querySelector('#poConcluir').addEventListener('click', () => {
         const status = getProtocoloStatus();
-        status.push({ data: new Date().toISOString().split('T')[0], concluido: true });
+        status.push({ data: new Date().toISOString().split('T')[0], concluido: true, exercicios: exs.length });
         localStorage.setItem(PROTOCOLO_STATUS_KEY, JSON.stringify(status));
         localStorage.setItem(PROTOCOLO_POS_KEY, '0');
         overlay.remove();
@@ -2282,6 +2326,7 @@ function attachHandlers() {
     if (log) openLogModal(log.train_idx, log);
   }));
   document.querySelectorAll('[data-action="delete-log"]').forEach(b => b.addEventListener('click', () => deletarLog(parseInt(b.dataset.ts))));
+  document.querySelectorAll('[data-action="delete-prot"]').forEach(b => b.addEventListener('click', () => deletarProtocoloRegistro(parseInt(b.dataset.protIdx))));
   const btnVerTreino = document.getElementById('btnVerTreino');
   if (btnVerTreino) btnVerTreino.addEventListener('click', () => {
     setTab('semana');
@@ -2592,6 +2637,17 @@ function deletarLog(ts) {
   }
   render();
   toast('Treino excluído');
+}
+
+function deletarProtocoloRegistro(idx) {
+  const status = getProtocoloStatus();
+  if (idx < 0 || idx >= status.length) return;
+  const reg = status[idx];
+  if (!confirm(`Excluir protocolo de ${fmtDateBR(reg.data)}?`)) return;
+  status.splice(idx, 1);
+  localStorage.setItem(PROTOCOLO_STATUS_KEY, JSON.stringify(status));
+  render();
+  toast('Protocolo excluído');
 }
 
 /* ========== MODAL: REALOCAR ========== */
@@ -3550,8 +3606,13 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.1.3';
+const APP_VERSION = '4.1.4';
 const CHANGELOG = [
+  { v: '4.1.4', date: '2026-06-30', items: [
+    'Protocolo concluído agora soma na aderência (Home, Semana e Métricas)',
+    'Registros do protocolo aparecem no Histórico, com opção de excluir',
+    'Botão Mostrar treino do protocolo agora em laranja sólido',
+  ]},
   { v: '4.1.3', date: '2026-06-30', items: [
     'Protocolo de joelho volta a contar na aderência de corrida',
     'Card do protocolo atualiza para Concluído na hora, sem precisar de reload',
