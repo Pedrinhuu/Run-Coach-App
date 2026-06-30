@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.30-1842",
+  "versao": "2026.06.30-1921",
   "data": "2026-06-30",
-  "novidades": ["v4.1.3: Reverte exclusão do protocolo da aderência e corrige re-render do card"]
+  "novidades": ["v4.1.4: Protocolo conta na aderência, aparece no Histórico e botão laranja"]
 }
