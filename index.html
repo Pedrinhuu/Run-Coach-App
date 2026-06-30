@@ -209,6 +209,27 @@
   .workout-overlay .ctrl-btn.danger{background:rgba(211,47,47,.85)}
   .workout-overlay .ctrl-btn:active{opacity:.8}
   .workout-overlay.done .timer{color:var(--green)}
+  .protocolo-overlay{position:fixed;inset:0;background:var(--bg);color:var(--text);z-index:400;display:flex;flex-direction:column;overflow:hidden}
+  .protocolo-overlay .po-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px 8px;flex-shrink:0}
+  .protocolo-overlay .po-header .po-label{font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  .protocolo-overlay .po-close{width:32px;height:32px;border-radius:50%;background:var(--bg2);border:none;font-size:18px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .protocolo-overlay .po-dots{display:flex;gap:6px;justify-content:center;padding:0 20px 12px;flex-shrink:0}
+  .protocolo-overlay .po-dots .dot{flex:1;max-width:48px;height:4px;background:var(--border);border-radius:2px}
+  .protocolo-overlay .po-dots .dot.active{background:var(--accent)}
+  .protocolo-overlay .po-body{flex:1;overflow-y:auto;padding:0 20px 24px;-webkit-overflow-scrolling:touch}
+  .protocolo-overlay .po-nome{font-size:22px;font-weight:700;margin-bottom:12px;line-height:1.3}
+  .protocolo-overlay .po-meta{display:flex;gap:16px;margin-bottom:16px;font-size:13px;color:var(--muted)}
+  .protocolo-overlay .po-meta .num{font-weight:700;color:var(--text)}
+  .protocolo-overlay .po-section-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:600;color:var(--muted);margin:16px 0 8px}
+  .protocolo-overlay .po-step{display:flex;gap:10px;padding:8px 0;font-size:14px;line-height:1.5}
+  .protocolo-overlay .po-step .po-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:2px}
+  .protocolo-overlay .po-carga{font-size:13px;color:var(--muted);line-height:1.5;margin-top:4px;padding:10px;background:var(--bg2);border-radius:8px}
+  .protocolo-overlay .po-nav{display:flex;gap:10px;padding:12px 20px 24px;flex-shrink:0}
+  .protocolo-overlay .po-nav button{flex:1;padding:14px;border-radius:8px;font-weight:700;font-size:14px;border:none;cursor:pointer}
+  .protocolo-overlay .po-nav .po-prev{background:var(--bg2);color:var(--text)}
+  .protocolo-overlay .po-nav .po-next{background:var(--accent);color:#fff}
+  .protocolo-overlay .po-nav button:disabled{opacity:.3;cursor:not-allowed}
+  .protocolo-overlay .po-concluir{width:100%;padding:14px;border-radius:8px;font-weight:700;font-size:14px;border:none;cursor:pointer;background:var(--green);color:#fff;margin-top:16px}
   .header-actions{display:flex;gap:6px}
   .copy-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:10px;background:var(--bg2);border-radius:8px;margin-bottom:8px}
   .copy-row .copy-content{flex:1;min-width:0}
@@ -962,6 +983,19 @@ function renderSemana() {
       </div>
     </div>`;
   });
+  const protStatus = getProtocoloStatus();
+  const hoje = new Date().toISOString().split('T')[0];
+  const protConcluido = protStatus.some(r => r.data === hoje && r.concluido);
+  html += `<div class="card">
+    <div class="row between">
+      <div><h3>${PROTOCOLO_JOELHO.dia} — ${PROTOCOLO_JOELHO.nome}</h3></div>
+      ${statusBadge(protConcluido ? 'Concluído' : 'Pendente')}
+    </div>
+    <div class="muted" style="margin-top:4px;font-size:12px">Fortalecimento muscular para proteção articular do joelho.</div>
+    <div class="muted" style="margin-top:4px;font-size:12px">${PROTOCOLO_JOELHO.exercicios.length} exercícios · ~${PROTOCOLO_JOELHO.duracao_estimada}</div>
+    <button class="btn outline" id="btnProtocoloCarrossel" style="margin-top:12px;font-size:13px;padding:10px;width:100%">Mostrar treino</button>
+  </div>`;
+
   html += `<button class="btn outline" id="btnImportarSemana" style="margin-top:16px">📥 Importar próxima semana do coach</button>`;
   return html;
 }
@@ -1328,6 +1362,24 @@ function renderMetricas() {
     </div>`;
   }
 
+  const protStatus = getProtocoloStatus();
+  const hojeISO = new Date().toISOString().split('T')[0];
+  const getMondayISO = (d) => { const dt = new Date(d); const day = dt.getDay(); dt.setDate(dt.getDate() + ((day === 0 ? -6 : 1) - day)); return dt.toISOString().split('T')[0]; };
+  const semanaAtualMonday = getMondayISO(hojeISO);
+  const concluiuEstaSemana = protStatus.some(r => r.concluido && getMondayISO(r.data) === semanaAtualMonday);
+  const streakProt = calcProtocoloStreak();
+  html += `<div class="card" style="position:relative">
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Fortalecimento do Joelho</div>
+    <div class="row between" style="font-size:13px;padding:4px 0">
+      <span>Esta semana</span>
+      <span class="num" style="color:${concluiuEstaSemana ? 'var(--green)' : 'var(--muted)'};font-weight:600">${concluiuEstaSemana ? 'Concluído' : 'Pendente'}</span>
+    </div>
+    <div class="row between" style="font-size:13px;padding:4px 0">
+      <span>Streak semanal</span>
+      <span class="num" style="font-weight:600">${streakProt} semana${streakProt !== 1 ? 's' : ''}</span>
+    </div>
+  </div>`;
+
   return html;
 }
 
@@ -1337,14 +1389,31 @@ const INTERVALS_KEY = 'runcoach_intervals_key';
 function getIntervalsKey() { return localStorage.getItem(INTERVALS_KEY) || ''; }
 function setIntervalsKey(key) { localStorage.setItem(INTERVALS_KEY, key); }
 
-const PROTOCOLO_JOELHO = [
-  { nome: 'Ponte Glútea com Peso', series: 3, duracao_serie_segundos: 45, descanso_segundos: 60 },
-  { nome: 'Cadeira Abdutora', series: 3, duracao_serie_segundos: 45, descanso_segundos: 60 },
-  { nome: 'Agachamento no Smith', series: 3, duracao_serie_segundos: 60, descanso_segundos: 90 },
-  { nome: 'Leg Press Unilateral', series: 3, duracao_serie_segundos: 45, descanso_segundos: 60 },
-  { nome: 'Mesa Flexora', series: 3, duracao_serie_segundos: 45, descanso_segundos: 60 },
-  { nome: 'Elevação de Panturrilha', series: 3, duracao_serie_segundos: 30, descanso_segundos: 45 },
-];
+const PROTOCOLO_JOELHO = {
+  nome: 'Protocolo de Fortalecimento do Joelho',
+  dia: 'Terça',
+  duracao_estimada: '45-55 min',
+  exercicios: [
+    { nome: 'Ponte Glútea com Peso', series: 3, reps: 15, descanso_segundos: 60, duracao_serie_segundos: 45,
+      execucao: ['Deite de costas, joelhos flexionados a 90°, pés apoiados no chão','Coloque um anilho ou haltere sobre o quadril','Empurre o quadril para cima contraindo o glúteo no topo','2s subindo, 2s no pico, 2s descendo','Não hiperestenda a lombar no topo'],
+      carga: 'Sem peso inicialmente. Adicione quando conseguir manter a contração no topo por 2s sem compensar com a lombar.' },
+    { nome: 'Cadeira Abdutora', series: 3, reps: 15, descanso_segundos: 60, duracao_serie_segundos: 45,
+      execucao: ['Sente com as costas apoiadas, joelhos a 90°','Almofadas na parte externa das coxas','Abra as pernas contra a resistência de forma controlada','2s abrindo, 1s no pico, 2s voltando','Não bata as pernas ao retornar'],
+      carga: 'Leve a moderada. Deve sentir o glúteo lateral, não o joelho.' },
+    { nome: 'Agachamento no Smith', series: 3, reps: 12, descanso_segundos: 90, duracao_serie_segundos: 60,
+      execucao: ['Pés afastados na largura dos ombros, ligeiramente abertos (30°)','Barra apoiada na parte média do trapézio','Desça até 90° de joelho, não além','Joelhos sempre apontando na direção dos pés','3s descendo, 1s subindo','Tronco ereto e core contraído'],
+      carga: 'Sem peso adicional inicialmente. Adicione só com técnica sólida.' },
+    { nome: 'Leg Press 45° Unilateral', series: 3, reps: 12, descanso_segundos: 60, duracao_serie_segundos: 45,
+      execucao: ['Uma perna de cada vez, pé centralizado na plataforma','Desça até 90° de flexão, nunca além','3s descendo, 1s subindo','Joelho alinhado com o segundo dedo do pé','Não trave o joelho no topo'],
+      carga: '20-30% do que usaria bilateral. Objetivo é ativação, não carga máxima.' },
+    { nome: 'Mesa Flexora', series: 3, reps: 12, descanso_segundos: 60, duracao_serie_segundos: 45,
+      execucao: ['Deite de bruços, joelhos levemente fora da borda','Flexione trazendo os calcanhares aos glúteos','2s subindo, 1s no pico, 3s descendo (excêntrico lento é o mais importante)','Não levante o quadril durante o movimento'],
+      carga: 'Moderada. O excêntrico lento de 3s protege o tendão.' },
+    { nome: 'Elevação de Panturrilha em Pé', series: 3, reps: 20, descanso_segundos: 45, duracao_serie_segundos: 30,
+      execucao: ['Pés paralelos na largura do quadril','Pontas dos pés em um degrau para amplitude total','Suba nas pontas dos pés o máximo possível','1s subindo, 1s no pico, 3s descendo (excêntrico lento)'],
+      carga: 'Peso corporal. Pode evoluir para unilateral quando ficar fácil.' },
+  ]
+};
 
 function buildIntervalsDescriptionForca(exercicios) {
   const lines = ['Main Set', ''];
@@ -1365,7 +1434,7 @@ async function enviarProtocoloJoelho(dataISO) {
     start_date_local: dataISO + 'T00:00:00',
     name: 'Protocolo de Fortalecimento - Joelho',
     type: 'WeightTraining',
-    description: buildIntervalsDescriptionForca(PROTOCOLO_JOELHO),
+    description: buildIntervalsDescriptionForca(PROTOCOLO_JOELHO.exercicios),
     external_id: 'runcoach_protocolo_joelho_' + dataISO,
   }];
   console.log('Payload Protocolo Joelho:', JSON.stringify(payload));
@@ -1396,6 +1465,110 @@ function proximaTerca() {
   const diff = (2 - dia + 7) % 7 || 7;
   d.setDate(d.getDate() + diff);
   return d.toISOString().split('T')[0];
+}
+
+/* ========== PROTOCOLO JOELHO — CARROSSEL ========== */
+const PROTOCOLO_POS_KEY = 'runcoach_protocolo_posicao';
+const PROTOCOLO_STATUS_KEY = 'runcoach_protocolo_status';
+
+function getProtocoloStatus() {
+  try { return JSON.parse(localStorage.getItem(PROTOCOLO_STATUS_KEY)) || []; } catch { return []; }
+}
+
+function calcProtocoloStreak() {
+  const regs = getProtocoloStatus().filter(r => r.concluido);
+  if (regs.length === 0) return 0;
+  const getMondayISO = (d) => {
+    const dt = new Date(d);
+    const day = dt.getDay();
+    const diff = (day === 0 ? -6 : 1) - day;
+    dt.setDate(dt.getDate() + diff);
+    return dt.toISOString().split('T')[0];
+  };
+  const weeks = new Set(regs.map(r => getMondayISO(r.data)));
+  let streak = 0;
+  const now = new Date();
+  const cur = new Date(getMondayISO(now.toISOString().split('T')[0]));
+  while (true) {
+    const key = cur.toISOString().split('T')[0];
+    if (weeks.has(key)) { streak++; cur.setDate(cur.getDate() - 7); }
+    else break;
+  }
+  return streak;
+}
+
+function openProtocoloCarrossel() {
+  const exs = PROTOCOLO_JOELHO.exercicios;
+  let idx = parseInt(localStorage.getItem(PROTOCOLO_POS_KEY)) || 0;
+  if (idx < 0 || idx >= exs.length) idx = 0;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'protocolo-overlay';
+
+  function render() {
+    const ex = exs[idx];
+    const isLast = idx === exs.length - 1;
+    localStorage.setItem(PROTOCOLO_POS_KEY, String(idx));
+
+    let dots = '';
+    exs.forEach((_, i) => { dots += `<span class="dot${i === idx ? ' active' : ''}"></span>`; });
+
+    let steps = '';
+    (ex.execucao || []).forEach((s, i) => {
+      steps += `<div class="po-step"><span class="po-num">${i + 1}</span><span>${escapeHtml(s)}</span></div>`;
+    });
+
+    overlay.innerHTML = `
+      <div class="po-header">
+        <span class="po-label">Exercício ${idx + 1} de ${exs.length}</span>
+        <button class="po-close" id="poClose">✕</button>
+      </div>
+      <div class="po-dots">${dots}</div>
+      <div class="po-body">
+        <div class="po-nome">${escapeHtml(ex.nome)}</div>
+        <div class="po-meta">
+          <div><span class="num">${ex.series}</span> séries × <span class="num">${ex.reps}</span> reps</div>
+          <div>Descanso: <span class="num">${ex.descanso_segundos}s</span></div>
+        </div>
+        <div class="po-section-title">Execução</div>
+        ${steps}
+        <div class="po-section-title" style="margin-top:20px">Carga</div>
+        <div class="po-carga">${escapeHtml(ex.carga || '')}</div>
+        ${isLast ? '<button class="po-concluir" id="poConcluir">Concluir treino</button>' : ''}
+      </div>
+      <div class="po-nav">
+        <button class="po-prev" id="poPrev" ${idx === 0 ? 'disabled' : ''}>← Anterior</button>
+        <button class="po-next" id="poNext" ${isLast ? 'disabled' : ''}>Próximo →</button>
+      </div>`;
+
+    overlay.querySelector('#poClose').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('#poPrev').addEventListener('click', () => { if (idx > 0) { idx--; render(); } });
+    overlay.querySelector('#poNext').addEventListener('click', () => { if (idx < exs.length - 1) { idx++; render(); } });
+    if (isLast) {
+      overlay.querySelector('#poConcluir').addEventListener('click', () => {
+        const status = getProtocoloStatus();
+        status.push({ data: new Date().toISOString().split('T')[0], concluido: true });
+        localStorage.setItem(PROTOCOLO_STATUS_KEY, JSON.stringify(status));
+        localStorage.setItem(PROTOCOLO_POS_KEY, '0');
+        overlay.remove();
+        toast('Protocolo concluído!');
+        renderApp();
+      });
+    }
+  }
+
+  let touchStartX = 0;
+  overlay.addEventListener('touchstart', (e) => { if (e.touches.length === 1) touchStartX = e.touches[0].clientX; }, { passive: true });
+  overlay.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) {
+      if (dx < 0 && idx < exs.length - 1) { idx++; render(); }
+      else if (dx > 0 && idx > 0) { idx--; render(); }
+    }
+  });
+
+  render();
+  document.body.appendChild(overlay);
 }
 
 function parseDuracaoParaSegundos(duracaoStr) {
@@ -2092,6 +2265,8 @@ function attachHandlers() {
     }
     openImportarSemanaModal();
   });
+  const btnProtCarrossel = document.getElementById('btnProtocoloCarrossel');
+  if (btnProtCarrossel) btnProtCarrossel.addEventListener('click', openProtocoloCarrossel);
   const btnVerSchema = document.getElementById('btnVerSchema');
   if (btnVerSchema) btnVerSchema.addEventListener('click', openSchemaModal);
   const greetingCard = document.getElementById('greetingCard');
@@ -3367,8 +3542,13 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.0.11';
+const APP_VERSION = '4.0.12';
 const CHANGELOG = [
+  { v: '4.0.12', date: '2026-06-30', items: [
+    'Carrossel guiado do Protocolo de Fortalecimento do Joelho na aba Semana',
+    'Card de métricas separado com streak semanal do protocolo',
+    'Retenção de posição no carrossel entre sessões',
+  ]},
   { v: '4.0.11', date: '2026-06-30', items: [
     'Novo botão: enviar Protocolo de Fortalecimento de Joelho ao relógio via Intervals.icu',
   ]},
