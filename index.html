@@ -546,7 +546,7 @@ const DIAS_SEMANA_GLOBAL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sext
 const ehTreinoCorrida = (tipo) => {
   if (!tipo) return false;
   const t = tipo.toLowerCase();
-  return !t.includes('descanso') && !t.includes('rest') && !t.includes('recuperação') && !t.includes('protocolo') && !t.includes('fortalecimento');
+  return !t.includes('descanso') && !t.includes('rest') && !t.includes('recuperação');
 };
 
 function setTab(name) {
@@ -1538,7 +1538,7 @@ function openProtocoloCarrossel() {
         localStorage.setItem(PROTOCOLO_POS_KEY, '0');
         overlay.remove();
         toast('Protocolo concluído!');
-        renderApp();
+        window.render();
       });
     }
   }
@@ -3550,8 +3550,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.1.1';
+const APP_VERSION = '4.1.3';
 const CHANGELOG = [
+  { v: '4.1.3', date: '2026-06-30', items: [
+    'Protocolo de joelho volta a contar na aderência de corrida',
+    'Card do protocolo atualiza para Concluído na hora, sem precisar de reload',
+  ]},
   { v: '4.1.1', date: '2026-06-30', items: [
     'Importação unificada: JSON pode incluir protocolo_joelho junto com a semana',
     'Protocolo de joelho agora lido de localStorage (atualizável via importação)',
