@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.30-1148",
+  "versao": "2026.06.30-1152",
   "data": "2026-06-30",
-  "novidades": ["v4.0.12: Carrossel guiado do Protocolo de Fortalecimento do Joelho"]
+  "novidades": ["v4.1.0: Remove envio de protocolo ao Intervals.icu, mantém carrossel guiado"]
 }
