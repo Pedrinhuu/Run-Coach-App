@@ -1,5 +1,5 @@
 {
-  "versao": "2026.06.30-1154",
+  "versao": "2026.06.30-1416",
   "data": "2026-06-30",
-  "novidades": ["v4.1.1: Importação unificada aceita protocolo_joelho no JSON da semana"]
+  "novidades": ["v4.1.1: Cards da Semana ordenados cronologicamente com protocolo intercalado"]
 }
