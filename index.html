@@ -1146,6 +1146,27 @@ function avgNums(arr) {
   return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
 }
 
+const MAPA_TIPOS = {
+  'corrida leve de retorno': 'Corrida Leve',
+  'corrida leve curta': 'Corrida Leve',
+  'corrida contínua leve': 'Corrida Leve',
+  'corrida leve com caminhada intercalada': 'Corrida Leve',
+  'corrida continua leve': 'Corrida Leve',
+  'fartlek simples': 'Fartlek',
+  'longão z2': 'Longão',
+  'longão z3': 'Longão',
+  'longão - corrida com caminhada intercalada': 'Longão',
+  'caminhada de ativação': 'Caminhada',
+  'prova - blue run 5k': 'Prova',
+  'prova blue run 5k': 'Prova',
+};
+
+const normalizarTipo = (tipo) => {
+  if (!tipo) return 'Outros';
+  const chave = tipo.toLowerCase().trim();
+  return MAPA_TIPOS[chave] || tipo;
+};
+
 function calcMetricas() {
   const logs = getLogs();
   const w = getWeek();
@@ -1187,11 +1208,12 @@ function calcMetricas() {
 
   const porTipo = {};
   for (const l of logs) {
-    if (!porTipo[l.tipo]) porTipo[l.tipo] = { n: 0, paceSum: 0, paceN: 0, distSum: 0, paces: [] };
-    porTipo[l.tipo].n++;
+    const tipoLabel = normalizarTipo(l.tipo);
+    if (!porTipo[tipoLabel]) porTipo[tipoLabel] = { n: 0, paceSum: 0, paceN: 0, distSum: 0, paces: [] };
+    porTipo[tipoLabel].n++;
     const ps = parsePace(l.pace_real);
-    if (ps) { porTipo[l.tipo].paceSum += ps; porTipo[l.tipo].paceN++; porTipo[l.tipo].paces.push(ps); }
-    if (l.distancia) porTipo[l.tipo].distSum += l.distancia;
+    if (ps) { porTipo[tipoLabel].paceSum += ps; porTipo[tipoLabel].paceN++; porTipo[tipoLabel].paces.push(ps); }
+    if (l.distancia) porTipo[tipoLabel].distSum += l.distancia;
   }
 
   const prim = logs.slice(0, 3).map(l => parsePace(l.pace_real)).filter(x => x);
@@ -1611,7 +1633,7 @@ function parseDuracaoParaSegundos(duracaoStr) {
   return segundos > 0 ? segundos : 1800;
 }
 
-function buildIntervalsDescription(bloco, zonas) {
+function buildIntervalsDescription(bloco, zonas, objetivo) {
   if (!bloco) return null;
 
   const zoneNum = (str) => str?.replace(/\D/g, '') || '2';
@@ -1622,10 +1644,13 @@ function buildIntervalsDescription(bloco, zonas) {
   const stepLine = (min, zona) => `- ${min}m Z${zoneNum(zona)} HR${paceCue(zona)}`;
 
   const zonaPrincipal = bloco.zona_principal || 'Z2';
-  const parts = [];
 
-  if (bloco.aquecimento) parts.push(`Aquecimento: ${bloco.aquecimento}`);
+  // Bloco informativo: aquecimento e desaquecimento (sem traço, sem linha em branco entre eles)
+  const infoLines = [];
+  if (bloco.aquecimento) infoLines.push(`Aquecimento: ${bloco.aquecimento}`);
+  if (bloco.desaquecimento) infoLines.push(`Desaquecimento: ${bloco.desaquecimento}`);
 
+  // Main Set: único bloco com traço (único step guiado no relógio)
   const mainLines = [];
   if (bloco.intervalos && bloco.intervalos.ciclos && bloco.intervalos.fases) {
     const { ciclos, fases } = bloco.intervalos;
@@ -1641,9 +1666,16 @@ function buildIntervalsDescription(bloco, zonas) {
     mainLines.push('Main Set');
     mainLines.push(stepLine(principalMin, zonaPrincipal));
   }
-  parts.push(mainLines.join('\n'));
 
-  if (bloco.desaquecimento) parts.push(`Desaquecimento: ${bloco.desaquecimento}`);
+  // Bloco informativo + Main Set, separados por linha em branco
+  const corpo = [];
+  if (infoLines.length) corpo.push(infoLines.join('\n'));
+  corpo.push(mainLines.join('\n'));
+
+  // Objetivo como primeira linha (omitido silenciosamente se null)
+  const parts = [];
+  if (objetivo) parts.push(objetivo);
+  parts.push(corpo.join('\n\n'));
 
   return parts.join('\n\n');
 }
@@ -1682,7 +1714,7 @@ async function enviarParaIntervals(treino, modalidade, dataISO) {
   const avaliacao = load(AVALIACAO_KEY, null);
   const zonas = (avaliacao && avaliacao.zonas) || {};
 
-  const descricao = buildIntervalsDescription(bloco, zonas) || [
+  const descricao = buildIntervalsDescription(bloco, zonas, treino.objetivo) || [
     bloco.aquecimento ? `Aquecimento: ${bloco.aquecimento}` : '',
     bloco.principal ? `Principal: ${bloco.principal}` : '',
     bloco.desaquecimento ? `Desaquecimento: ${bloco.desaquecimento}` : '',
@@ -3606,8 +3638,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.1.6';
+const APP_VERSION = '4.2.0';
 const CHANGELOG = [
+  { v: '4.2.0', date: '2026-07-02', items: [
+    'Envio ao relógio: description inclui objetivo, aquecimento e desaquecimento',
+    'Métricas: tipos de treino normalizados no card Por tipo de treino',
+  ]},
   { v: '4.1.6', date: '2026-06-30', items: [
     'Botão Mostrar treino com mesmo tamanho e padrão de Iniciar treino',
   ]},
