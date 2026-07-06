@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.06-2243",
+  "versao": "2026.07.06-2254",
   "data": "2026-07-06",
-  "novidades": ["v4.2.1: Corrige aderência contando protocolo de semana anterior (bug de fuso)"]
+  "novidades": ["v4.2.2: Unifica cálculos de semana no mondayISOOf corrigido"]
 }
