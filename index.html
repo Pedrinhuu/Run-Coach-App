@@ -895,9 +895,21 @@ function renderResumeBanner() {
 }
 
 function calcAderencia(w) {
-  const previstos = (w.treinos || []).filter(t => ehTreinoCorrida(t.tipo)).length;
-  let concluidos = (w.treinos || []).filter(t => ehTreinoCorrida(t.tipo) && t.status === 'Concluído').length;
-  if (weekHasProtocolo(w) && protocoloConcluidoNaSemanaAtual()) concluidos += 1;
+  const treinosCorrida = (w.treinos || []).filter(t => ehTreinoCorrida(t.tipo));
+  const previstos = treinosCorrida.length;
+  const concluidosTreinos = treinosCorrida.filter(t => t.status === 'Concluído');
+  let concluidos = concluidosTreinos.length;
+  const temProt = weekHasProtocolo(w);
+  const regProt = temProt ? registroProtocoloSemanaAtual() : null;
+  if (regProt) concluidos += 1;
+
+  // Diagnóstico de aderência (numerador lê apenas w.treinos da semana atual, nunca o histórico)
+  const { inicio, fim } = intervaloSemanaAtual();
+  console.log('[Aderência] Semana atual (Segunda a Domingo):', inicio, 'a', fim);
+  console.log('[Aderência] Treinos concluídos contados:', concluidosTreinos.map(t => `${t.dia}/${t.tipo}${t.data_efetiva ? ' [' + t.data_efetiva + ']' : ''}`));
+  console.log('[Aderência] weekHasProtocolo:', temProt, '| protocolo concluído na semana:', !!regProt, regProt ? '(registro ' + regProt.data + ')' : '');
+  console.log('[Aderência] Resultado:', concluidos + '/' + previstos);
+
   return { previstos, concluidos, pct: previstos > 0 ? Math.round((concluidos / previstos) * 100) : null };
 }
 
@@ -1509,10 +1521,21 @@ function getProtocoloStatus() {
 }
 
 function mondayISOOf(d) {
-  const dt = new Date(d);
-  const day = dt.getDay();
-  dt.setDate(dt.getDate() + ((day === 0 ? -6 : 1) - day));
+  // d é 'YYYY-MM-DD' (data de calendário armazenada em UTC pelo app).
+  // Calcula a segunda-feira inteiramente em UTC para evitar deslocamento
+  // de fuso ao redor da meia-noite (getDay/setDate locais bugavam o intervalo).
+  const s = (typeof d === 'string' ? d : new Date(d).toISOString()).split('T')[0];
+  const dt = new Date(s + 'T00:00:00Z');
+  const dow = dt.getUTCDay();
+  dt.setUTCDate(dt.getUTCDate() + ((dow === 0 ? -6 : 1) - dow));
   return dt.toISOString().split('T')[0];
+}
+
+function intervaloSemanaAtual() {
+  const inicio = mondayISOOf(todayISO());
+  const dt = new Date(inicio + 'T00:00:00Z');
+  dt.setUTCDate(dt.getUTCDate() + 6);
+  return { inicio, fim: dt.toISOString().split('T')[0] };
 }
 
 function weekHasProtocolo(w) {
@@ -1522,9 +1545,13 @@ function weekHasProtocolo(w) {
   });
 }
 
+function registroProtocoloSemanaAtual() {
+  const semMonday = mondayISOOf(todayISO());
+  return getProtocoloStatus().find(r => r.concluido && mondayISOOf(r.data) === semMonday) || null;
+}
+
 function protocoloConcluidoNaSemanaAtual() {
-  const semMonday = mondayISOOf(new Date().toISOString().split('T')[0]);
-  return getProtocoloStatus().some(r => r.concluido && mondayISOOf(r.data) === semMonday);
+  return !!registroProtocoloSemanaAtual();
 }
 
 function calcProtocoloStreak() {
@@ -3638,8 +3665,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.2.0';
+const APP_VERSION = '4.2.1';
 const CHANGELOG = [
+  { v: '4.2.1', date: '2026-07-06', items: [
+    'Correção: aderência contava protocolo de semana anterior por bug de fuso no cálculo Segunda a Domingo',
+  ]},
   { v: '4.2.0', date: '2026-07-02', items: [
     'Envio ao relógio: description inclui objetivo, aquecimento e desaquecimento',
     'Métricas: tipos de treino normalizados no card Por tipo de treino',
