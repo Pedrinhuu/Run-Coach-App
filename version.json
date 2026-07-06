@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.02-1950",
-  "data": "2026-07-02",
-  "novidades": ["v4.2.0: Description completa para o relógio e normalização de tipos nas Métricas"]
+  "versao": "2026.07.06-2243",
+  "data": "2026-07-06",
+  "novidades": ["v4.2.1: Corrige aderência contando protocolo de semana anterior (bug de fuso)"]
 }
