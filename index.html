@@ -1440,10 +1440,8 @@ function renderMetricas() {
   }
 
   const protStatus = getProtocoloStatus();
-  const hojeISO = new Date().toISOString().split('T')[0];
-  const getMondayISO = (d) => { const dt = new Date(d); const day = dt.getDay(); dt.setDate(dt.getDate() + ((day === 0 ? -6 : 1) - day)); return dt.toISOString().split('T')[0]; };
-  const semanaAtualMonday = getMondayISO(hojeISO);
-  const concluiuEstaSemana = protStatus.some(r => r.concluido && getMondayISO(r.data) === semanaAtualMonday);
+  const semanaAtualMonday = mondayISOOf(todayISO());
+  const concluiuEstaSemana = protStatus.some(r => r.concluido && mondayISOOf(r.data) === semanaAtualMonday);
   const streakProt = calcProtocoloStreak();
   html += `<div class="card" style="position:relative">
     <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Fortalecimento do Joelho</div>
@@ -1557,20 +1555,12 @@ function protocoloConcluidoNaSemanaAtual() {
 function calcProtocoloStreak() {
   const regs = getProtocoloStatus().filter(r => r.concluido);
   if (regs.length === 0) return 0;
-  const getMondayISO = (d) => {
-    const dt = new Date(d);
-    const day = dt.getDay();
-    const diff = (day === 0 ? -6 : 1) - day;
-    dt.setDate(dt.getDate() + diff);
-    return dt.toISOString().split('T')[0];
-  };
-  const weeks = new Set(regs.map(r => getMondayISO(r.data)));
+  const weeks = new Set(regs.map(r => mondayISOOf(r.data)));
   let streak = 0;
-  const now = new Date();
-  const cur = new Date(getMondayISO(now.toISOString().split('T')[0]));
+  const cur = new Date(mondayISOOf(todayISO()) + 'T00:00:00Z');
   while (true) {
     const key = cur.toISOString().split('T')[0];
-    if (weeks.has(key)) { streak++; cur.setDate(cur.getDate() - 7); }
+    if (weeks.has(key)) { streak++; cur.setUTCDate(cur.getUTCDate() - 7); }
     else break;
   }
   return streak;
@@ -3665,8 +3655,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.2.1';
+const APP_VERSION = '4.2.2';
 const CHANGELOG = [
+  { v: '4.2.2', date: '2026-07-06', items: [
+    'Streak e card Esta semana usam o mesmo cálculo de semana corrigido (sem bug de fuso)',
+  ]},
   { v: '4.2.1', date: '2026-07-06', items: [
     'Correção: aderência contava protocolo de semana anterior por bug de fuso no cálculo Segunda a Domingo',
   ]},
