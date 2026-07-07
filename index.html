@@ -669,14 +669,10 @@ function renderHome() {
       ehTreinoCorrida(t.tipo) && (t.rua || t.esteira)
     );
     const diaAtualIdx = new Date().getDay();
-    const horaAtual = new Date().getHours();
     const pendentes = treinosAtivos.filter(({ t }) => t.status === 'Pendente' && ehTreinoCorrida(t.tipo));
-    let proxItem = pendentes.find(({ t }) => {
-      const diaIdx = DIAS_SEMANA_GLOBAL.indexOf(t.dia);
-      if (diaIdx > diaAtualIdx) return true;
-      if (diaIdx === diaAtualIdx && horaAtual < 14) return true;
-      return false;
-    });
+    // Próximo treino: treino de hoje Pendente tem prioridade (qualquer hora);
+    // senão, primeiro Pendente nos dias seguintes. Nunca depende da hora do dia.
+    let proxItem = pendentes.find(({ t }) => DIAS_SEMANA_GLOBAL.indexOf(t.dia) >= diaAtualIdx);
     if (!proxItem) proxItem = pendentes[0] || null;
 
     if (proxItem) {
@@ -948,14 +944,11 @@ function renderSemana() {
   );
 
   const diaAtualIdxSem = new Date().getDay();
-  const horaAtualSem = new Date().getHours();
-  let proxIdx = treinosAtivos.findIndex(({ t }) => {
-    if (t.status !== 'Pendente') return false;
-    const diaIdx = DIAS_SEMANA_GLOBAL.indexOf(t.dia);
-    if (diaIdx > diaAtualIdxSem) return true;
-    if (diaIdx === diaAtualIdxSem && horaAtualSem < 14) return true;
-    return false;
-  });
+  // Borda laranja (próximo treino): hoje Pendente tem prioridade (qualquer hora);
+  // senão, primeiro Pendente nos dias seguintes. Nunca depende da hora do dia.
+  let proxIdx = treinosAtivos.findIndex(({ t }) =>
+    t.status === 'Pendente' && DIAS_SEMANA_GLOBAL.indexOf(t.dia) >= diaAtualIdxSem
+  );
   if (proxIdx < 0) proxIdx = treinosAtivos.findIndex(({ t }) => t.status === 'Pendente');
 
   const items = treinosAtivos.map(({ t, idx }, arrIdx) => ({
@@ -3671,8 +3664,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.2.3';
+const APP_VERSION = '4.2.4';
 const CHANGELOG = [
+  { v: '4.2.4', date: '2026-07-06', items: [
+    'Próximo treino: treino de hoje Pendente aparece a qualquer hora (removido corte das 14h)',
+  ]},
   { v: '4.2.3', date: '2026-07-06', items: [
     'Envio ao relógio: description inclui distância e duração estimadas do treino',
   ]},
