@@ -23,3 +23,7 @@ desktop.ini
 # Logs
 *.log
 npm-debug.log*
+
+# Backups locais
+runcoach_backup.json
+*.json.bak
