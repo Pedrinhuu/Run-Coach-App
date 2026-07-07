@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.07-0108",
+  "versao": "2026.07.07-0116",
   "data": "2026-07-07",
-  "novidades": ["chore: ignora runcoach_backup.json e *.json.bak no git"]
+  "novidades": ["v4.2.5: Corrige data +1 no modal Enviar para relógio"]
 }
