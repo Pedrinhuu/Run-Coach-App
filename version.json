@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.07-0051",
+  "versao": "2026.07.07-0106",
   "data": "2026-07-07",
-  "novidades": ["v4.2.3: Distância e duração estimadas na description do Intervals.icu"]
+  "novidades": ["v4.2.4: Próximo treino não depende mais da hora do dia"]
 }
