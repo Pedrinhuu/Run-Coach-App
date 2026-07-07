@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.06-2254",
-  "data": "2026-07-06",
-  "novidades": ["v4.2.2: Unifica cálculos de semana no mondayISOOf corrigido"]
+  "versao": "2026.07.07-0051",
+  "data": "2026-07-07",
+  "novidades": ["v4.2.3: Distância e duração estimadas na description do Intervals.icu"]
 }
