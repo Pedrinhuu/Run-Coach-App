@@ -745,6 +745,15 @@ function predictedDate(trainIdx) {
   return d.toISOString().slice(0,10);
 }
 
+function dataDoTreino(diaNome) {
+  // Data do treino na semana atual (Segunda a Domingo), calculada 100% em UTC,
+  // consistente com mondayISOOf. Evita o offset de +1 dia no fuso UTC-3.
+  const mondayDate = new Date(mondayISOOf(todayISO()) + 'T00:00:00Z');
+  const offsetDia = DIAS_SEMANA_GLOBAL.indexOf(diaNome) - 1; // Segunda (índice 1) = offset 0
+  mondayDate.setUTCDate(mondayDate.getUTCDate() + Math.max(0, offsetDia));
+  return mondayDate.toISOString().split('T')[0];
+}
+
 function isPastPredicted(trainIdx) {
   const w = getWeek();
   const t = w.treinos[trainIdx];
@@ -1818,7 +1827,7 @@ function openEnviarConfirmModal(idx, modalidade) {
   const w = getWeek();
   const t = w.treinos[idx];
   const bloco = t[modalidade];
-  const dataDefault = predictedDate(idx);
+  const dataDefault = dataDoTreino(t.dia);
 
   const back = document.createElement('div');
   back.className = 'modal-backdrop';
@@ -3664,8 +3673,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.2.4';
+const APP_VERSION = '4.2.5';
 const CHANGELOG = [
+  { v: '4.2.5', date: '2026-07-06', items: [
+    'Enviar para relógio: data sugerida corresponde ao dia do treino (corrigido offset de +1 por fuso)',
+  ]},
   { v: '4.2.4', date: '2026-07-06', items: [
     'Próximo treino: treino de hoje Pendente aparece a qualquer hora (removido corte das 14h)',
   ]},
