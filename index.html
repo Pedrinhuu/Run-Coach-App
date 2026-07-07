@@ -1650,8 +1650,10 @@ function parseDuracaoParaSegundos(duracaoStr) {
   return segundos > 0 ? segundos : 1800;
 }
 
-function buildIntervalsDescription(bloco, zonas, objetivo) {
+function buildIntervalsDescription(bloco, zonas, treino) {
   if (!bloco) return null;
+
+  const objetivo = treino?.objetivo || null;
 
   const zoneNum = (str) => str?.replace(/\D/g, '') || '2';
   const paceCue = (z) => {
@@ -1689,9 +1691,23 @@ function buildIntervalsDescription(bloco, zonas, objetivo) {
   if (infoLines.length) corpo.push(infoLines.join('\n'));
   corpo.push(mainLines.join('\n'));
 
-  // Objetivo como primeira linha (omitido silenciosamente se null)
+  // Linha de distância e duração estimadas (só existe se houver distância)
+  let distLine = null;
+  let distVal = treino?.distancia_km;
+  if (distVal == null) distVal = treino?.rua?.distancia_km;
+  if (distVal == null) distVal = treino?.esteira?.distancia_km;
+  if (distVal != null) {
+    const dur = bloco.duracao_total || treino?.rua?.duracao_total || treino?.esteira?.duracao_total || null;
+    distLine = `Distância estimada: ${Number(distVal).toFixed(1)} km${dur ? ` | ${dur}` : ''}`;
+  }
+
+  // Cabeçalho: objetivo e linha de distância (omitidos silenciosamente se ausentes)
+  const header = [];
+  if (objetivo) header.push(objetivo);
+  if (distLine) header.push(distLine);
+
   const parts = [];
-  if (objetivo) parts.push(objetivo);
+  if (header.length) parts.push(header.join('\n'));
   parts.push(corpo.join('\n\n'));
 
   return parts.join('\n\n');
@@ -1731,7 +1747,7 @@ async function enviarParaIntervals(treino, modalidade, dataISO) {
   const avaliacao = load(AVALIACAO_KEY, null);
   const zonas = (avaliacao && avaliacao.zonas) || {};
 
-  const descricao = buildIntervalsDescription(bloco, zonas, treino.objetivo) || [
+  const descricao = buildIntervalsDescription(bloco, zonas, treino) || [
     bloco.aquecimento ? `Aquecimento: ${bloco.aquecimento}` : '',
     bloco.principal ? `Principal: ${bloco.principal}` : '',
     bloco.desaquecimento ? `Desaquecimento: ${bloco.desaquecimento}` : '',
@@ -3655,8 +3671,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.2.2';
+const APP_VERSION = '4.2.3';
 const CHANGELOG = [
+  { v: '4.2.3', date: '2026-07-06', items: [
+    'Envio ao relógio: description inclui distância e duração estimadas do treino',
+  ]},
   { v: '4.2.2', date: '2026-07-06', items: [
     'Streak e card Esta semana usam o mesmo cálculo de semana corrigido (sem bug de fuso)',
   ]},
