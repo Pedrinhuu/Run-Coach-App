@@ -668,15 +668,21 @@ function renderHome() {
     const treinosAtivos = w.treinos.map((t, idx) => ({ t, idx })).filter(({ t }) =>
       ehTreinoCorrida(t.tipo) && (t.rua || t.esteira)
     );
-    const diaAtualIdx = new Date().getDay();
-    const pendentes = treinosAtivos.filter(({ t }) => t.status === 'Pendente' && ehTreinoCorrida(t.tipo));
-    // Próximo treino: treino de hoje Pendente tem prioridade (qualquer hora);
-    // senão, primeiro Pendente nos dias seguintes. Nunca depende da hora do dia.
-    let proxItem = pendentes.find(({ t }) => DIAS_SEMANA_GLOBAL.indexOf(t.dia) >= diaAtualIdx);
-    if (!proxItem) proxItem = pendentes[0] || null;
+    // Próxima atividade pendente considerando também o protocolo de joelho na sequência.
+    const { prox } = proximaAtividadeSemana(w);
 
-    if (proxItem) {
-      const { t, idx } = proxItem;
+    if (prox && prox.tipo === 'protocolo') {
+      const pj = prox.pj;
+      html += `<div class="card" style="border:1px solid #f97316">
+        <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px;color:#f97316">Próximo treino</div>
+        <div style="font-weight:700;font-size:15px">${escapeHtml(prox.dia)} — ${escapeHtml(pj.nome || 'Protocolo de Fortalecimento do Joelho')}</div>
+        <div class="muted" style="font-size:13px;margin-top:4px">Fortalecimento muscular para proteção articular do joelho.</div>
+        <div class="num" style="font-size:13px;margin-top:4px">${pj.exercicios.length} exercícios${pj.duracao_estimada ? ' · ~' + escapeHtml(pj.duracao_estimada) : ''}</div>
+        <button class="btn" id="btnVerProtocolo" style="margin-top:12px">Ver protocolo</button>
+      </div>`;
+    } else if (prox) {
+      const { idx } = prox;
+      const t = w.treinos[idx];
       const mode = trainModeByIdx[idx] || 'rua';
       const data = t[mode];
       const distKm = getDistanciaKm(t, mode);
@@ -689,7 +695,7 @@ function renderHome() {
         <button class="btn" id="btnVerTreino" data-idx="${idx}" style="margin-top:12px">Ver treino</button>
       </div>`;
     } else {
-      const allDone = pendentes.length === 0 && treinosAtivos.length > 0;
+      const allDone = treinosAtivos.length > 0;
       if (allDone) {
         html += `<div class="card" style="border:1px solid var(--green);text-align:center;padding:20px">
           <div style="font-size:28px;margin-bottom:8px">✅</div>
@@ -752,6 +758,30 @@ function dataDoTreino(diaNome) {
   const offsetDia = DIAS_SEMANA_GLOBAL.indexOf(diaNome) - 1; // Segunda (índice 1) = offset 0
   mondayDate.setUTCDate(mondayDate.getUTCDate() + Math.max(0, offsetDia));
   return mondayDate.toISOString().split('T')[0];
+}
+
+function proximaAtividadeSemana(w) {
+  // Próxima atividade pendente (treino de corrida OU protocolo de joelho),
+  // considerada na sequência cronológica de dias da semana.
+  const ORDEM = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+  const ordIdx = (d) => { const i = ORDEM.indexOf(d); return i < 0 ? 99 : i; };
+  const hojeOrd = ordIdx(DIAS_NOMES[new Date().getDay()]);
+
+  const lista = [];
+  (w.treinos || []).forEach((t, idx) => {
+    if (ehTreinoCorrida(t.tipo) && (t.rua || t.esteira) && t.status === 'Pendente') {
+      lista.push({ tipo: 'corrida', dia: t.dia, idx });
+    }
+  });
+  const pj = getProtocoloJoelho();
+  if (pj && Array.isArray(pj.exercicios) && pj.exercicios.length > 0 && !protocoloConcluidoNaSemanaAtual()) {
+    lista.push({ tipo: 'protocolo', dia: pj.dia || 'Terça', pj });
+  }
+  lista.sort((a, b) => ordIdx(a.dia) - ordIdx(b.dia));
+
+  let prox = lista.find(a => ordIdx(a.dia) >= hojeOrd);
+  if (!prox) prox = lista[0] || null;
+  return { prox, temPendentes: lista.length > 0 };
 }
 
 function isPastPredicted(trainIdx) {
@@ -952,13 +982,8 @@ function renderSemana() {
     ehTreinoCorrida(t.tipo) && (t.rua || t.esteira)
   );
 
-  const diaAtualIdxSem = new Date().getDay();
-  // Borda laranja (próximo treino): hoje Pendente tem prioridade (qualquer hora);
-  // senão, primeiro Pendente nos dias seguintes. Nunca depende da hora do dia.
-  let proxIdx = treinosAtivos.findIndex(({ t }) =>
-    t.status === 'Pendente' && DIAS_SEMANA_GLOBAL.indexOf(t.dia) >= diaAtualIdxSem
-  );
-  if (proxIdx < 0) proxIdx = treinosAtivos.findIndex(({ t }) => t.status === 'Pendente');
+  // Borda laranja (próxima atividade): considera corrida e protocolo na sequência do dia.
+  const { prox } = proximaAtividadeSemana(w);
 
   const items = treinosAtivos.map(({ t, idx }, arrIdx) => ({
     tipo: 'corrida', dia: t.dia, t, idx, arrIdx
@@ -988,7 +1013,7 @@ function renderSemana() {
       const mode = trainModeByIdx[idx] || 'rua';
       const data = t[mode] || null;
       const showRealocar = isPastPredicted(idx);
-      const isNextPending = arrIdx === proxIdx;
+      const isNextPending = prox && prox.tipo === 'corrida' && prox.idx === idx;
       const cardBorder = isNextPending ? 'border:1px solid #f97316' : '';
       const distKm = getDistanciaKm(t, mode);
       const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
@@ -1017,7 +1042,9 @@ function renderSemana() {
         </div>
       </div>`;
     } else {
-      html += `<div class="card">
+      const isNextProt = prox && prox.tipo === 'protocolo';
+      const cardBorder = isNextProt ? 'border:1px solid #f97316' : '';
+      html += `<div class="card" ${isNextProt ? 'id="nextPendingCard"' : ''} style="${cardBorder}">
         <div class="row between">
           <div><h3>${pj.dia || 'Terça'} — ${pj.nome || 'Protocolo de Fortalecimento do Joelho'}</h3></div>
           ${statusBadge(protConcluido ? 'Concluído' : 'Pendente')}
@@ -2364,6 +2391,8 @@ function attachHandlers() {
   });
   const btnProtCarrossel = document.getElementById('btnProtocoloCarrossel');
   if (btnProtCarrossel) btnProtCarrossel.addEventListener('click', openProtocoloCarrossel);
+  const btnVerProtocolo = document.getElementById('btnVerProtocolo');
+  if (btnVerProtocolo) btnVerProtocolo.addEventListener('click', openProtocoloCarrossel);
   const btnVerSchema = document.getElementById('btnVerSchema');
   if (btnVerSchema) btnVerSchema.addEventListener('click', openSchemaModal);
   const greetingCard = document.getElementById('greetingCard');
@@ -3673,8 +3702,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.2.5';
+const APP_VERSION = '4.2.6';
 const CHANGELOG = [
+  { v: '4.2.6', date: '2026-07-06', items: [
+    'Próximo treino: protocolo de joelho entra na sequência de dias (Home e borda da Semana)',
+  ]},
   { v: '4.2.5', date: '2026-07-06', items: [
     'Enviar para relógio: data sugerida corresponde ao dia do treino (corrigido offset de +1 por fuso)',
   ]},
