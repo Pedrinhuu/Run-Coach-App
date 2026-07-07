@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.07-0106",
+  "versao": "2026.07.07-0108",
   "data": "2026-07-07",
-  "novidades": ["v4.2.4: Próximo treino não depende mais da hora do dia"]
+  "novidades": ["chore: ignora runcoach_backup.json e *.json.bak no git"]
 }
