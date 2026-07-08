@@ -465,6 +465,22 @@ function fmtDateBR(iso) {
 }
 function todayISO() { return new Date().toISOString().slice(0,10); }
 function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / (1000*60*60*24)); }
+function raceDistanceKm(r) {
+  // Distância em km da corrida: usa distancia_km se presente, senão deriva do label.
+  if (r && typeof r.distancia_km === 'number' && r.distancia_km > 0) return r.distancia_km;
+  const m = String((r && r.distance) || '').match(/([\d]+(?:[.,]\d+)?)/);
+  if (!m) return null;
+  let km = parseFloat(m[1].replace(',', '.'));
+  if (isNaN(km) || km <= 0) return null;
+  if (km === 21) km = 21.097;
+  else if (km === 42) km = 42.195;
+  return km;
+}
+function paceResultado(tempoSeg, km) {
+  if (!tempoSeg || !km || km <= 0) return null;
+  const p = Math.round(tempoSeg / km);
+  return `${Math.floor(p/60)}'${String(p%60).padStart(2,'0')}"/km`;
+}
 function parsePace(s) {
   if (!s) return null;
   const m = String(s).match(/(\d+)\s*['′:]\s*(\d+)/);
@@ -1137,33 +1153,78 @@ function renderTreinosSubTab() {
 }
 
 function renderCorridasSubTab() {
-  const races = getRaces().slice().sort((a, b) => a.date.localeCompare(b.date));
   const today = todayISO();
-  const upcoming = races.filter(r => r.date >= today);
-  const nextRace = upcoming[0];
+  const all = getRaces().slice();
   let html = `<div style="text-align:right;margin-bottom:12px">
     <button class="btn small" id="btnAddRace" style="width:auto;padding:8px 14px">+ Nova</button>
   </div>`;
-  if (races.length === 0) {
+  if (all.length === 0) {
     html += `<div class="empty">Nenhuma corrida cadastrada.</div>`;
     return html;
   }
-  for (const r of races) {
+  // Ordenação: futuras (crescente) > passadas com resultado (decrescente) > passadas sem resultado (decrescente)
+  const futuras = all.filter(r => r.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+  const passComRes = all.filter(r => r.date < today && r.resultado).sort((a, b) => b.date.localeCompare(a.date));
+  const passSemRes = all.filter(r => r.date < today && !r.resultado).sort((a, b) => b.date.localeCompare(a.date));
+  const nextRace = futuras[0];
+  const ordered = [...futuras, ...passComRes, ...passSemRes];
+
+  for (const r of ordered) {
     const isPast = r.date < today;
-    const isHigh = nextRace && r.id === nextRace.id;
+    const hasResult = !!r.resultado;
+    const isNext = nextRace && r.id === nextRace.id;
     const days = daysBetween(today, r.date);
-    html += `<div class="card race-card ${isHigh?'highlight':''}">
+
+    let borda = '';
+    if (hasResult) borda = 'border:2px solid #22c55e';
+    else if (isNext) borda = 'border:2px solid var(--accent)';
+
+    // Linha de status
+    let statusLine;
+    if (hasResult) {
+      statusLine = `<div class="countdown" style="color:#22c55e;font-weight:700">Concluída ✓</div>`;
+    } else if (isPast) {
+      statusLine = `<div class="countdown" style="color:#eab308;font-weight:700">Aguardando resultado</div>`;
+    } else {
+      statusLine = `<div class="countdown">${days === 0 ? 'Hoje!' : `em ${days} dias`}</div>`;
+    }
+
+    // Bloco estimado x resultado
+    let corpo = '';
+    if (hasResult) {
+      const res = r.resultado;
+      corpo = `<div class="row" style="gap:24px;margin-top:8px">
+        <div>
+          <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Estimado</div>
+          <div class="num" style="font-size:15px;font-weight:700;margin-top:2px">${escapeHtml(r.time_estimate || '-')}</div>
+          <div class="muted" style="font-size:12px">${escapeHtml(r.estimate_pace || '-')}</div>
+        </div>
+        <div>
+          <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Resultado</div>
+          <div class="num" style="font-size:15px;font-weight:700;margin-top:2px;color:#22c55e">${escapeHtml(res.tempo || '-')}</div>
+          <div class="muted" style="font-size:12px">${escapeHtml(res.pace || '-')}</div>
+        </div>
+      </div>
+      ${res.observacao ? `<div class="muted" style="font-size:12px;font-style:italic;margin-top:8px">"${escapeHtml(res.observacao)}"</div>` : ''}`;
+    } else {
+      corpo = r.time_estimate ? `<div class="row" style="gap:6px;margin-top:6px;font-size:13px;align-items:center"><span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Tempo estimado</span><span class="num" style="font-weight:700;color:var(--accent)">${escapeHtml(r.time_estimate)}</span>${r.estimate_pace ? `<span class="muted" style="font-size:12px">· pace ${escapeHtml(r.estimate_pace)}</span>` : ''}</div>` : '';
+      if (isPast) {
+        corpo += `<button class="btn" data-action="register-result" data-id="${r.id}" style="margin-top:10px">Registrar resultado</button>`;
+      }
+    }
+
+    html += `<div class="card race-card" style="${borda}">
       <div class="row between">
         <div class="name">${escapeHtml(r.name)}</div>
         <div class="row" style="gap:6px">
-          <span class="badge orange">${escapeHtml(r.distance)}</span>
+          <span class="badge ${hasResult ? 'green' : 'orange'}">${escapeHtml(r.distance)}</span>
           <button class="help-btn" data-action="edit-race" data-id="${r.id}" aria-label="Editar" style="width:24px;height:24px;font-size:11px">✎</button>
           <button class="help-btn" data-action="delete-race" data-id="${r.id}" aria-label="Remover" style="width:24px;height:24px;font-size:12px">✕</button>
         </div>
       </div>
       <div class="date">${fmtDateBR(r.date)}</div>
-      <div class="countdown">${isPast ? 'Concluída' : (days === 0 ? 'Hoje!' : `em ${days} dias`)}</div>
-      ${r.time_estimate ? `<div class="row" style="gap:6px;margin-top:6px;font-size:13px;align-items:center"><span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Tempo estimado</span><span class="num" style="font-weight:700;color:var(--accent)">${escapeHtml(r.time_estimate)}</span>${r.estimate_pace ? `<span class="muted" style="font-size:12px">· pace ${escapeHtml(r.estimate_pace)}</span>` : ''}</div>` : ''}
+      ${statusLine}
+      ${corpo}
     </div>`;
   }
   return html;
@@ -2290,9 +2351,18 @@ function openRaceModal(existingId) {
     <h2>${isEdit ? 'Editar corrida' : 'Nova corrida'}</h2>
     <div class="field"><label>Nome</label><input type="text" id="rNome" placeholder="ex: Maratona do Rio" value="${escapeHtml(def.name || '')}"></div>
     <div class="field"><label>Data</label>${pickerInputHtml('rData', fmtDateBR(def.date || todayISO()), 'Selecionar data')}</div>
-    <div class="field"><label>Distância</label><input type="text" id="rDist" placeholder="ex: 10K, 21K, 42K" value="${escapeHtml(def.distance || '')}"></div>
+    <div class="field"><label>Distância</label>
+      <div class="toggle" id="rDistToggle" style="flex-wrap:wrap;gap:3px">
+        <button type="button" data-dist="5">5K</button>
+        <button type="button" data-dist="15">15K</button>
+        <button type="button" data-dist="21">21K</button>
+        <button type="button" data-dist="custom">Personalizada</button>
+      </div>
+      <div id="rDistCustomWrap" style="display:none;margin-top:8px">${pickerInputHtml('rDistCustom', '', 'Distância (km)')}</div>
+    </div>
     <div class="field"><label>Tempo estimado <span class="muted" style="text-transform:none;letter-spacing:0">(opcional — pedir ao coach)</span></label>${pickerInputHtml('rTime', def.time_estimate || '', "selecionar tempo")}</div>
     <div class="field"><label>Pace estimado <span class="muted" style="text-transform:none;letter-spacing:0">(opcional)</span></label>${pickerInputHtml('rPace', def.estimate_pace || '', "ex: 5'59\"/km")}</div>
+    ${(isEdit && (existing.date < todayISO() || existing.resultado)) ? `<div class="field"><button class="btn outline" id="btnEditResult" type="button">${existing.resultado ? 'Editar resultado da prova' : 'Registrar resultado da prova'}</button></div>` : ''}
     <div class="btn-row">
       <button class="btn outline" id="raceCancel">Cancelar</button>
       <button class="btn" id="raceSave">Salvar</button>
@@ -2307,6 +2377,33 @@ function openRaceModal(existingId) {
   rcData.addEventListener('click', () => {
     openDatePicker(rcData.dataset.value, (iso) => pickerInputSet(rcData, iso, fmtDateBR(iso)));
   });
+
+  // Seletor de distância (badges + Personalizada)
+  const distBadges = { '5': { km: 5.0, label: '5K' }, '15': { km: 15.0, label: '15K' }, '21': { km: 21.097, label: '21K' } };
+  const distToggle = back.querySelector('#rDistToggle');
+  const distCustomWrap = back.querySelector('#rDistCustomWrap');
+  const rDistCustom = back.querySelector('#rDistCustom');
+  let selKm = null, selLabel = null;
+  const activateBadge = (key) => distToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.dist === key));
+  const setBadge = (key) => { const d = distBadges[key]; selKm = d.km; selLabel = d.label; distCustomWrap.style.display = 'none'; activateBadge(key); };
+  const setCustom = (km) => { if (km && km > 0) { selKm = km; selLabel = (km % 1 === 0 ? String(km) : String(km)) + 'K'; pickerInputSet(rDistCustom, String(km), selLabel); } };
+  rDistCustom.addEventListener('click', () => openDistPicker(parseFloat(rDistCustom.dataset.value) || 0, setCustom));
+  distToggle.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    const key = b.dataset.dist;
+    if (key === 'custom') { activateBadge('custom'); distCustomWrap.style.display = 'block'; }
+    else setBadge(key);
+  }));
+  (function initDist() {
+    const km0 = raceDistanceKm(def);
+    if (km0 == null) return;
+    if (Math.abs(km0 - 5) < 0.01) setBadge('5');
+    else if (Math.abs(km0 - 15) < 0.01) setBadge('15');
+    else if (Math.abs(km0 - 21.097) < 0.05) setBadge('21');
+    else { activateBadge('custom'); distCustomWrap.style.display = 'block'; setCustom(km0); }
+  })();
+
+  const btnEditResult = back.querySelector('#btnEditResult');
+  if (btnEditResult) btnEditResult.addEventListener('click', () => { back.remove(); openRegistrarResultadoModal(existingId); });
 
   const rcTime = back.querySelector('#rTime');
   const rcTimeInitial = parseTempo(def.time_estimate);
@@ -2327,7 +2424,8 @@ function openRaceModal(existingId) {
   back.querySelector('#raceSave').addEventListener('click', () => {
     const nome = back.querySelector('#rNome').value.trim();
     const data = rcData.dataset.value;
-    const dist = back.querySelector('#rDist').value.trim() || '-';
+    const dist = selLabel || def.distance || '-';
+    const distKm = selKm != null ? selKm : (typeof def.distancia_km === 'number' ? def.distancia_km : null);
     const tempoSeg = parseInt(rcTime.dataset.value) || null;
     const tempo = tempoSeg ? fmtTempoInput(tempoSeg) : '';
     const paceSeg = parseInt(rcPace.dataset.value) || null;
@@ -2338,14 +2436,14 @@ function openRaceModal(existingId) {
     if (isEdit) {
       const i = all.findIndex(r => r.id === existingId);
       if (i >= 0) {
-        all[i] = { ...all[i], name: nome, date: data, distance: dist, time_estimate: tempo || null, estimate_pace: pace || null };
+        all[i] = { ...all[i], name: nome, date: data, distance: dist, distancia_km: distKm, time_estimate: tempo || null, estimate_pace: pace || null };
         setRaces(all);
         back.remove();
         render();
         toast('Corrida atualizada', 'success');
       }
     } else {
-      all.push({ id: 'r' + Date.now(), name: nome, date: data, distance: dist, time_estimate: tempo || null, estimate_pace: pace || null });
+      all.push({ id: 'r' + Date.now(), name: nome, date: data, distance: dist, distancia_km: distKm, time_estimate: tempo || null, estimate_pace: pace || null });
       setRaces(all);
       back.remove();
       render();
@@ -2354,6 +2452,91 @@ function openRaceModal(existingId) {
   });
 }
 function openAddRaceModal() { openRaceModal(null); }
+
+function openTempoRaceResultPicker(currentSec, comHoras, onConfirm) {
+  const mins = []; for (let m = 0; m < 60; m++) mins.push(String(m).padStart(2, '0'));
+  const secs = []; for (let s = 0; s < 60; s++) secs.push(String(s).padStart(2, '0'));
+  if (comHoras) {
+    const hours = []; for (let h = 0; h <= 9; h++) hours.push(String(h));
+    const h0 = Math.floor((currentSec || 0) / 3600), m0 = Math.floor(((currentSec || 0) % 3600) / 60), s0 = (currentSec || 0) % 60;
+    openPicker({
+      title: 'Tempo (h : min : seg)',
+      columns: [{ items: hours, initial: Math.min(h0, 9) }, { items: mins, initial: m0 }, { items: secs, initial: s0 }],
+      separators: [':', ':'],
+      onConfirm: ([hi, mi, si]) => { const t = parseInt(hours[hi]) * 3600 + parseInt(mins[mi]) * 60 + parseInt(secs[si]); onConfirm({ seconds: t, text: fmtTempoInput(t) }); }
+    });
+  } else {
+    const m0 = Math.min(59, Math.floor((currentSec || 0) / 60)), s0 = (currentSec || 0) % 60;
+    openPicker({
+      title: 'Tempo (min : seg)',
+      columns: [{ items: mins, initial: m0 }, { items: secs, initial: s0 }],
+      separators: [':'],
+      onConfirm: ([mi, si]) => { const t = parseInt(mins[mi]) * 60 + parseInt(secs[si]); onConfirm({ seconds: t, text: fmtTempoInput(t) }); }
+    });
+  }
+}
+
+function openRegistrarResultadoModal(id) {
+  const r = getRaces().find(x => x.id === id);
+  if (!r) return;
+  const km = raceDistanceKm(r);
+  const comHoras = !(km != null && km <= 10);
+  const res = r.resultado || {};
+
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal">
+    <h2>Registrar resultado — ${escapeHtml(r.name)}</h2>
+    <div class="field"><label>Tempo real</label>${pickerInputHtml('resTempo', res.tempo || '', comHoras ? 'HH:MM:SS' : 'MM:SS')}</div>
+    <div class="field"><label>Pace real <span class="muted" style="text-transform:none;letter-spacing:0">(calculado)</span></label>
+      <div class="picker-input" style="opacity:.85;pointer-events:none"><span id="resPace" data-display>${res.pace || '—'}</span></div>
+    </div>
+    <div class="field"><label>Observação <span class="muted" style="text-transform:none;letter-spacing:0">(opcional)</span></label>
+      <textarea id="resObs" rows="3" placeholder="Como foi a prova? Joelho, clima, estratégia...">${escapeHtml(res.observacao || '')}</textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn outline" id="resCancel">Cancelar</button>
+      <button class="btn" id="resSave">Salvar resultado</button>
+    </div>
+  </div>`;
+  document.body.appendChild(back);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  back.querySelector('#resCancel').addEventListener('click', () => back.remove());
+
+  const resTempo = back.querySelector('#resTempo');
+  const resPaceEl = back.querySelector('#resPace');
+  resTempo.dataset.value = res.tempo_segundos != null ? String(res.tempo_segundos) : '';
+  const refreshPace = () => {
+    const seg = parseInt(resTempo.dataset.value) || 0;
+    resPaceEl.textContent = paceResultado(seg, km) || '—';
+  };
+  refreshPace();
+  resTempo.addEventListener('click', () => {
+    const cur = parseInt(resTempo.dataset.value) || 0;
+    openTempoRaceResultPicker(cur, comHoras, ({ seconds, text }) => { pickerInputSet(resTempo, String(seconds), text); refreshPace(); });
+  });
+
+  back.querySelector('#resSave').addEventListener('click', () => {
+    const seg = parseInt(resTempo.dataset.value) || null;
+    if (!seg) { alert('Informe o tempo real'); return; }
+    const obs = back.querySelector('#resObs').value.trim();
+    const all = getRaces();
+    const i = all.findIndex(x => x.id === id);
+    if (i >= 0) {
+      all[i] = { ...all[i], resultado: {
+        tempo: fmtTempoInput(seg),
+        tempo_segundos: seg,
+        pace: paceResultado(seg, km) || null,
+        observacao: obs || null,
+        registrado_em: todayISO()
+      } };
+      setRaces(all);
+      back.remove();
+      render();
+      toast('Resultado registrado', 'success');
+    }
+  });
+}
 
 function deletarCorrida(id) {
   const races = getRaces();
@@ -2408,6 +2591,7 @@ function attachHandlers() {
   if (btnAddRace) btnAddRace.addEventListener('click', openAddRaceModal);
   document.querySelectorAll('[data-action="delete-race"]').forEach(b => b.addEventListener('click', () => deletarCorrida(b.dataset.id)));
   document.querySelectorAll('[data-action="edit-race"]').forEach(b => b.addEventListener('click', () => openRaceModal(b.dataset.id)));
+  document.querySelectorAll('[data-action="register-result"]').forEach(b => b.addEventListener('click', () => openRegistrarResultadoModal(b.dataset.id)));
   const btnNovoTeste = document.getElementById('btnNovoTeste');
   if (btnNovoTeste) btnNovoTeste.addEventListener('click', openNovoTesteModal);
   document.querySelectorAll('[data-action="delete-test"]').forEach(b => b.addEventListener('click', () => deletarTeste(parseInt(b.dataset.id))));
@@ -3702,8 +3886,13 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.2.6';
+const APP_VERSION = '4.3.0';
 const CHANGELOG = [
+  { v: '4.3.0', date: '2026-07-08', items: [
+    'Histórico de Corridas: registre o resultado real (tempo, pace) vs o estimado',
+    'Cadastro de corrida com distância personalizada em km',
+    'Cards de prova concluída, aguardando resultado e futura com ordenação e cores próprias',
+  ]},
   { v: '4.2.6', date: '2026-07-06', items: [
     'Próximo treino: protocolo de joelho entra na sequência de dias (Home e borda da Semana)',
   ]},
