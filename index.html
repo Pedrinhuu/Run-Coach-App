@@ -1152,6 +1152,34 @@ function renderTreinosSubTab() {
   return html;
 }
 
+function calcularPRs(corridas) {
+  // PRs calculados dinamicamente a cada render — nunca persistidos.
+  const prs = {};
+  corridas
+    .filter(c => c.resultado && c.resultado.tempo_segundos)
+    .forEach(c => {
+      const km = raceDistanceKm(c);
+      if (km == null) return;
+      const dist = Math.round(km * 10) / 10;
+      if (!prs[dist] || c.resultado.tempo_segundos < prs[dist].tempo_segundos) {
+        prs[dist] = {
+          tempo: c.resultado.tempo,
+          pace: c.resultado.pace,
+          tempo_segundos: c.resultado.tempo_segundos,
+          nome: c.name,
+          data: c.date,
+          id: c.id
+        };
+      }
+    });
+  return prs;
+}
+
+function fmtDateCurta(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\./g, '').replace(/ de /g, ' ');
+}
+
 function renderCorridasSubTab() {
   const today = todayISO();
   const all = getRaces().slice();
@@ -1162,6 +1190,27 @@ function renderCorridasSubTab() {
     html += `<div class="empty">Nenhuma corrida cadastrada.</div>`;
     return html;
   }
+  // Recordes pessoais (dinâmicos, por distância)
+  const prs = calcularPRs(all);
+  const prDists = Object.keys(prs).map(Number).sort((a, b) => a - b);
+  if (prDists.length > 0) {
+    let linhas = '';
+    for (const dist of prDists) {
+      const pr = prs[dist];
+      const distLabel = (dist % 1 === 0 ? String(dist) : String(dist)) + 'K';
+      linhas += `<div class="row" style="gap:10px;align-items:baseline;padding:6px 0;font-size:13px;flex-wrap:wrap">
+        <span class="num" style="color:#f97316;font-weight:700;min-width:38px">${escapeHtml(distLabel)}</span>
+        <span class="num" style="color:#22c55e;font-weight:700">${escapeHtml(pr.tempo || '-')}</span>
+        <span style="color:#9ca3af">${escapeHtml(pr.pace || '-')}</span>
+        <span style="color:#9ca3af;font-size:12px">${escapeHtml(pr.nome)} · ${fmtDateCurta(pr.data)}</span>
+      </div>`;
+    }
+    html += `<div class="card" style="border:1px solid var(--border)">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px">🏆 Recordes pessoais</div>
+      ${linhas}
+    </div>`;
+  }
+
   // Ordenação: futuras (crescente) > passadas com resultado (decrescente) > passadas sem resultado (decrescente)
   const futuras = all.filter(r => r.date >= today).sort((a, b) => a.date.localeCompare(b.date));
   const passComRes = all.filter(r => r.date < today && r.resultado).sort((a, b) => b.date.localeCompare(a.date));
@@ -1217,6 +1266,7 @@ function renderCorridasSubTab() {
       <div class="row between">
         <div class="name">${escapeHtml(r.name)}</div>
         <div class="row" style="gap:6px">
+          ${(() => { const km = raceDistanceKm(r); const dist = km != null ? Math.round(km * 10) / 10 : null; return (dist != null && prs[dist] && prs[dist].id === r.id) ? '<span class="badge" style="background:#f59e0b;color:#fff">🏆 PR</span>' : ''; })()}
           <span class="badge ${hasResult ? 'green' : 'orange'}">${escapeHtml(r.distance)}</span>
           <button class="help-btn" data-action="edit-race" data-id="${r.id}" aria-label="Editar" style="width:24px;height:24px;font-size:11px">✎</button>
           <button class="help-btn" data-action="delete-race" data-id="${r.id}" aria-label="Remover" style="width:24px;height:24px;font-size:12px">✕</button>
@@ -3886,8 +3936,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.3.0';
+const APP_VERSION = '4.3.1';
 const CHANGELOG = [
+  { v: '4.3.1', date: '2026-07-08', items: [
+    'Recordes pessoais (PR) por distância na aba Corridas, com badge no card recordista',
+  ]},
   { v: '4.3.0', date: '2026-07-08', items: [
     'Histórico de Corridas: registre o resultado real (tempo, pace) vs o estimado',
     'Cadastro de corrida com distância personalizada em km',
