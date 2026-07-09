@@ -3936,8 +3936,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.3.1';
+const APP_VERSION = '4.3.2';
 const CHANGELOG = [
+  { v: '4.3.2', date: '2026-07-09', items: [
+    'Popup Versão atual mostra as novidades da versão instalada, igual ao Histórico de versões',
+  ]},
   { v: '4.3.1', date: '2026-07-08', items: [
     'Recordes pessoais (PR) por distância na aba Corridas, com badge no card recordista',
   ]},
@@ -4947,14 +4950,15 @@ async function openUpdateModal() {
 }
 
 function openUpToDateModal() {
-  const info = currentVersionInfo;
-  const savedVer = localStorage.getItem(VERSION_KEY) || APP_VERSION;
+  // Fonte única: CHANGELOG local, ancorado na versão instalada (APP_VERSION).
+  // Mantém o popup de boas-vindas sincronizado com o topo do Histórico de versões.
+  const atual = CHANGELOG.find(c => c.v === APP_VERSION) || CHANGELOG[0] || null;
   const back = document.createElement('div');
   back.className = 'modal-backdrop';
-  const novidades = info && info.novidades ? info.novidades.map(n => `<li>${escapeHtml(n)}</li>`).join('') : '';
+  const novidades = atual ? atual.items.map(n => `<li>${escapeHtml(n)}</li>`).join('') : '';
   back.innerHTML = `<div class="modal" style="padding:20px">
     <h2 style="margin-bottom:4px">Versão atual</h2>
-    <div class="muted" style="font-size:13px;margin-bottom:12px">v${escapeHtml(info ? info.versao : savedVer)}${info && info.data ? ' · ' + fmtDateBR(info.data) : ''}</div>
+    <div class="muted" style="font-size:13px;margin-bottom:12px">v${escapeHtml(atual ? atual.v : APP_VERSION)}${atual && atual.date ? ' · ' + fmtDateBR(atual.date) : ''}</div>
     <div style="font-size:15px;margin-bottom:14px">Você já está com a versão mais recente 🎉</div>
     ${novidades ? `<div style="margin-bottom:14px">
       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px">Novidades desta versão</div>
