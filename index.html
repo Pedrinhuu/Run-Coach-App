@@ -777,11 +777,11 @@ function dataDoTreino(diaNome) {
 }
 
 function proximaAtividadeSemana(w) {
-  // Próxima atividade pendente (treino de corrida OU protocolo de joelho),
-  // considerada na sequência cronológica de dias da semana.
+  // Próxima atividade pendente (treino de corrida OU protocolo de joelho):
+  // sempre o primeiro Pendente na ordem cronológica da semana, independente
+  // do dia atual. O avanço ocorre apenas quando o anterior deixa de ser Pendente.
   const ORDEM = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
   const ordIdx = (d) => { const i = ORDEM.indexOf(d); return i < 0 ? 99 : i; };
-  const hojeOrd = ordIdx(DIAS_NOMES[new Date().getDay()]);
 
   const lista = [];
   (w.treinos || []).forEach((t, idx) => {
@@ -795,8 +795,7 @@ function proximaAtividadeSemana(w) {
   }
   lista.sort((a, b) => ordIdx(a.dia) - ordIdx(b.dia));
 
-  let prox = lista.find(a => ordIdx(a.dia) >= hojeOrd);
-  if (!prox) prox = lista[0] || null;
+  const prox = lista[0] || null;
   return { prox, temPendentes: lista.length > 0 };
 }
 
@@ -3936,8 +3935,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.3.2';
+const APP_VERSION = '4.3.3';
 const CHANGELOG = [
+  { v: '4.3.3', date: '2026-07-10', items: [
+    'Próximo treino mostra sempre o primeiro pendente na ordem da semana, sem pular por causa do dia atual',
+  ]},
   { v: '4.3.2', date: '2026-07-09', items: [
     'Popup Versão atual mostra as novidades da versão instalada, igual ao Histórico de versões',
   ]},
