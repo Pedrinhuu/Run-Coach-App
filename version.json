@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.10-1849",
+  "versao": "2026.07.10-1858",
   "data": "2026-07-10",
-  "novidades": ["v4.4.0: Backup automático em Gist privado do GitHub"]
+  "novidades": ["v4.4.1: JSON de exemplo para o coach em Ajustes"]
 }
