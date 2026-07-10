@@ -74,6 +74,7 @@
   .badge.muted{background:var(--badge-muted-bg);color:var(--muted)}
   .badge.blue{background:var(--badge-blue-bg);color:var(--blue)}
   .badge.clickable{cursor:pointer;text-decoration:underline}
+  details:not([open]) .ex-json-body{display:none}
   .header-week{margin-bottom:16px}
   .header-week .focus{font-size:13px;color:var(--muted);margin-top:4px}
   .train-section{margin-top:10px}
@@ -4022,8 +4023,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.4.2';
+const APP_VERSION = '4.4.3';
 const CHANGELOG = [
+  { v: '4.4.3', date: '2026-07-10', items: [
+    'JSON de exemplo em Ajustes ficou compacto: JSON e explicação agora ficam em "Ver JSON e campos"',
+  ]},
   { v: '4.4.2', date: '2026-07-10', items: [
     'Ajustes: textos dos backups deixam claro que o do GitHub é automático e o manual é complementar',
   ]},
@@ -4574,21 +4578,26 @@ function openSettingsModal() {
       const valido = validarSemanaImport(exemploSemanaImport()).ok && validarProtocoloJoelho(exemploSemanaImport().protocolo_joelho);
       return `<div style="padding:14px 0;border-bottom:1px solid var(--border)">
       <div class="label" style="font-size:14px;font-weight:600;margin-bottom:4px">JSON de exemplo para o coach</div>
-      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:8px">Formato aceito no "Importar próxima semana do coach". Copie e envie para quem for gerar o plano (outro coach ou chat de IA). Troque os valores de exemplo por uma semana real.</div>
-      <div class="sub" style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
-        <strong>O que cada campo significa:</strong><br>
-        • <code>semana</code>: número da semana no plano.<br>
-        • <code>fase</code>: fase do treino (ex: Base, Específico).<br>
-        • <code>foco_da_semana</code> / <code>observacao_coach</code>: objetivo e observação livre.<br>
-        • <code>alerta_coach</code>: aviso importante, ou null.<br>
-        • <code>treinos</code>: lista de treinos. Cada um com <code>dia</code>, <code>tipo</code>, <code>objetivo</code> e os blocos <code>rua</code> e <code>esteira</code>.<br>
-        • Em <code>rua</code>/<code>esteira</code>: <code>aquecimento</code>, <code>principal</code>, <code>desaquecimento</code>, <code>duracao_total</code>, <code>distancia_km</code>, zonas <code>Z1</code> a <code>Z5</code> e <code>pace_alvo_central_segundos</code> (pace em segundos por km). Treino intervalado usa <code>intervalos</code> com <code>ciclos</code> e <code>fases</code>.<br>
-        • <code>protocolo_joelho</code>: opcional. Fortalecimento com <code>dia</code> e <code>exercicios</code> (nome, series, reps, execucao).<br>
-        • <code>estimativas_provas</code>: opcional. Provas alvo; <code>"nova": true</code> cria, ou casa pelo nome para atualizar.
-      </div>
-      <span class="badge ${valido ? 'green' : 'red'}" style="margin-bottom:8px;display:inline-block">${valido ? '✓ válido para importação' : 'exemplo inválido'}</span>
-      <pre id="exemploJsonPre" style="background:var(--bg2);padding:12px;border-radius:8px;font-size:11px;max-height:220px;overflow:auto;font-family:monospace;line-height:1.5;color:var(--text);white-space:pre;margin:0">${escapeHtml(exemploSemanaJSON())}</pre>
-      <button class="btn" id="btnCopiarExemploJson" style="margin-top:10px;font-size:13px;padding:10px">📋 Copiar JSON</button>
+      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:10px">Formato aceito para importar uma semana. Copie e envie para o chat que vai gerar seu plano.</div>
+      <button class="btn" id="btnCopiarExemploJson" style="font-size:13px;padding:10px">📋 Copiar JSON</button>
+      <details style="margin-top:10px">
+        <summary style="font-size:12px;color:var(--muted);cursor:pointer">Ver JSON e campos</summary>
+        <div class="ex-json-body">
+        <div class="sub" style="font-size:11px;color:var(--muted);margin:8px 0 10px;line-height:1.6">
+          <strong>O que cada campo significa:</strong><br>
+          • <code>semana</code>: número da semana no plano.<br>
+          • <code>fase</code>: fase do treino (ex: Base, Específico).<br>
+          • <code>foco_da_semana</code> / <code>observacao_coach</code>: objetivo e observação livre.<br>
+          • <code>alerta_coach</code>: aviso importante, ou null.<br>
+          • <code>treinos</code>: lista de treinos. Cada um com <code>dia</code>, <code>tipo</code>, <code>objetivo</code> e os blocos <code>rua</code> e <code>esteira</code>.<br>
+          • Em <code>rua</code>/<code>esteira</code>: <code>aquecimento</code>, <code>principal</code>, <code>desaquecimento</code>, <code>duracao_total</code>, <code>distancia_km</code>, zonas <code>Z1</code> a <code>Z5</code> e <code>pace_alvo_central_segundos</code> (pace em segundos por km). Treino intervalado usa <code>intervalos</code> com <code>ciclos</code> e <code>fases</code>.<br>
+          • <code>protocolo_joelho</code>: opcional. Fortalecimento com <code>dia</code> e <code>exercicios</code> (nome, series, reps, execucao).<br>
+          • <code>estimativas_provas</code>: opcional. Provas alvo; <code>"nova": true</code> cria, ou casa pelo nome para atualizar.
+        </div>
+        <span class="badge ${valido ? 'green' : 'red'}" style="margin-bottom:8px;display:inline-block">${valido ? '✓ válido para importação' : 'exemplo inválido'}</span>
+        <pre id="exemploJsonPre" style="background:var(--bg2);padding:12px;border-radius:8px;font-size:11px;max-height:220px;overflow:auto;font-family:monospace;line-height:1.5;color:var(--text);white-space:pre;margin:0">${escapeHtml(exemploSemanaJSON())}</pre>
+        </div>
+      </details>
     </div>`;
     })()}
     <div class="setting-row">
