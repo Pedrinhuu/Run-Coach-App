@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.10-1253",
+  "versao": "2026.07.10-1849",
   "data": "2026-07-10",
-  "novidades": ["v4.3.3: Próximo treino sempre o primeiro pendente na ordem da semana"]
+  "novidades": ["v4.4.0: Backup automático em Gist privado do GitHub"]
 }
