@@ -421,7 +421,7 @@ function load(k, def) {
     return def;
   }
 }
-function save(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+function save(k, v) { localStorage.setItem(k, JSON.stringify(v)); scheduleGistSync(); }
 const WEEK_DEFAULT = { semana_atual: 0, fase: '-', foco_da_semana: '', alerta_coach: null, treinos: [], observacao_coach: '' };
 function getWeek() {
   try {
@@ -1603,6 +1603,80 @@ const INTERVALS_KEY = 'runcoach_intervals_key';
 function getIntervalsKey() { return localStorage.getItem(INTERVALS_KEY) || ''; }
 function setIntervalsKey(key) { localStorage.setItem(INTERVALS_KEY, key); }
 
+/* ========== BACKUP NO GITHUB (GIST PRIVADO) ========== */
+const GITHUB_TOKEN_KEY = 'runcoach_github_token';
+const GITHUB_GIST_ID_KEY = 'runcoach_github_gist_id';
+const GITHUB_SYNC_META_KEY = 'runcoach_github_sync_meta';
+const GIST_FILENAME = 'runcoach_backup.json';
+
+function getGithubToken() { return localStorage.getItem(GITHUB_TOKEN_KEY) || ''; }
+function setGithubToken(t) { if (t) localStorage.setItem(GITHUB_TOKEN_KEY, t); else localStorage.removeItem(GITHUB_TOKEN_KEY); }
+function getGistId() { return localStorage.getItem(GITHUB_GIST_ID_KEY) || ''; }
+function setGistId(id) { if (id) localStorage.setItem(GITHUB_GIST_ID_KEY, id); else localStorage.removeItem(GITHUB_GIST_ID_KEY); }
+function getSyncMeta() { try { return JSON.parse(localStorage.getItem(GITHUB_SYNC_META_KEY)) || null; } catch { return null; } }
+function setSyncMeta(m) { try { localStorage.setItem(GITHUB_SYNC_META_KEY, JSON.stringify(m)); } catch {} }
+
+function githubHeaders(token, comContentType) {
+  const h = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' };
+  if (comContentType) h['Content-Type'] = 'application/json';
+  return h;
+}
+function githubError(status) {
+  if (status === 401) return new Error('Token do GitHub inválido, gere um novo em github.com/settings/tokens');
+  if (status === 403) return new Error('Limite de requisições do GitHub atingido. Tente novamente mais tarde.');
+  if (status === 404) return new Error('Backup não encontrado no GitHub. Crie um novo backup.');
+  return new Error('Erro do GitHub (' + status + ').');
+}
+async function githubCreateGist(token) {
+  const body = { description: 'Run Coach Daily backup (privado)', public: false, files: { [GIST_FILENAME]: { content: JSON.stringify(buildBackupObject(), null, 2) } } };
+  const res = await fetch('https://api.github.com/gists', { method: 'POST', headers: githubHeaders(token, true), body: JSON.stringify(body) });
+  if (!res.ok) throw githubError(res.status);
+  const json = await res.json();
+  return json.id;
+}
+async function githubUpdateGist(token, gistId) {
+  const body = { files: { [GIST_FILENAME]: { content: JSON.stringify(buildBackupObject(), null, 2) } } };
+  const res = await fetch('https://api.github.com/gists/' + gistId, { method: 'PATCH', headers: githubHeaders(token, true), body: JSON.stringify(body) });
+  if (!res.ok) throw githubError(res.status);
+  return true;
+}
+async function githubFetchGist(token, gistId) {
+  const res = await fetch('https://api.github.com/gists/' + gistId, { headers: githubHeaders(token, false) });
+  if (!res.ok) throw githubError(res.status);
+  const json = await res.json();
+  const file = json.files && json.files[GIST_FILENAME];
+  if (!file) throw new Error('Arquivo de backup não encontrado no gist.');
+  let content = file.content;
+  if (file.truncated && file.raw_url) { const raw = await fetch(file.raw_url); content = await raw.text(); }
+  return JSON.parse(content);
+}
+async function githubFindBackupGistId(token) {
+  const res = await fetch('https://api.github.com/gists?per_page=100', { headers: githubHeaders(token, false) });
+  if (!res.ok) throw githubError(res.status);
+  const gists = await res.json();
+  const found = Array.isArray(gists) ? gists.find(g => g.files && g.files[GIST_FILENAME]) : null;
+  return found ? found.id : null;
+}
+
+let _gistSyncTimer = null;
+function scheduleGistSync() {
+  // Só agenda se houver token e gist configurados (sem isso, nenhuma chamada de rede).
+  if (!getGithubToken() || !getGistId()) return;
+  clearTimeout(_gistSyncTimer);
+  _gistSyncTimer = setTimeout(doGistSync, 4000);
+}
+async function doGistSync() {
+  const token = getGithubToken(), gistId = getGistId();
+  if (!token || !gistId) return;
+  try {
+    await githubUpdateGist(token, gistId);
+    setSyncMeta({ at: new Date().toISOString(), status: 'ok' });
+  } catch (e) {
+    console.warn('Falha ao sincronizar backup no GitHub:', e.message);
+    setSyncMeta({ at: new Date().toISOString(), status: 'erro', erro: e.message });
+  }
+}
+
 const PROTOCOLO_JOELHO_KEY = 'runcoach_protocolo_joelho';
 
 const PROTOCOLO_JOELHO_DEFAULT = {
@@ -1758,6 +1832,7 @@ function openProtocoloCarrossel() {
         status.push({ data: new Date().toISOString().split('T')[0], concluido: true, exercicios: exs.length });
         localStorage.setItem(PROTOCOLO_STATUS_KEY, JSON.stringify(status));
         localStorage.setItem(PROTOCOLO_POS_KEY, '0');
+        scheduleGistSync();
         overlay.remove();
         toast('Protocolo concluído!');
         window.render();
@@ -2975,6 +3050,7 @@ function deletarProtocoloRegistro(idx) {
   if (!confirm(`Excluir protocolo de ${fmtDateBR(reg.data)}?`)) return;
   status.splice(idx, 1);
   localStorage.setItem(PROTOCOLO_STATUS_KEY, JSON.stringify(status));
+  scheduleGistSync();
   render();
   toast('Protocolo excluído');
 }
@@ -3935,8 +4011,13 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.3.3';
+const APP_VERSION = '4.4.0';
 const CHANGELOG = [
+  { v: '4.4.0', date: '2026-07-10', items: [
+    'Backup automático na nuvem via GitHub Gist privado (token fica só no aparelho)',
+    'Restaurar dados do backup do GitHub em Ajustes',
+    'Backup manual agora inclui também o protocolo de joelho',
+  ]},
   { v: '4.3.3', date: '2026-07-10', items: [
     'Próximo treino mostra sempre o primeiro pendente na ordem da semana, sem pular por causa do dia atual',
   ]},
@@ -4269,27 +4350,47 @@ function resetarApp() {
   location.reload();
 }
 
-function exportBackup() {
-  const BACKUP_KEYS = [
+// Chaves incluídas no backup (fonte única para export manual e sync no GitHub).
+// Nunca inclui tokens/chaves de API (Intervals.icu, GitHub).
+function backupKeys() {
+  return [
     KEYS.week, KEYS.logs, KEYS.history, KEYS.races,
-    AVALIACAO_KEY, SETTINGS_KEY, ACTIVE_WORKOUT_KEY, VERSION_KEY
+    AVALIACAO_KEY, SETTINGS_KEY, ACTIVE_WORKOUT_KEY, VERSION_KEY,
+    PROTOCOLO_JOELHO_KEY, PROTOCOLO_STATUS_KEY
   ];
-  const lerChave = (chave) => {
-    const raw = localStorage.getItem(chave);
-    if (raw === null) return null;
-    try { return JSON.parse(raw); } catch (e) { return raw; }
-  };
+}
+const BACKUP_EXCLUDE_KEYS = ['runcoach_intervals_key', GITHUB_TOKEN_KEY, GITHUB_GIST_ID_KEY, GITHUB_SYNC_META_KEY, 'runcoach_anthropic_key'];
+
+function buildBackupObject() {
   const data = {};
-  BACKUP_KEYS.forEach(k => {
-    const v = lerChave(k);
-    if (v !== null) data[k] = v;
+  backupKeys().forEach(k => {
+    const raw = localStorage.getItem(k);
+    if (raw === null) return;
+    try { data[k] = JSON.parse(raw); } catch { data[k] = raw; }
   });
-  const blob = new Blob([JSON.stringify({
-    _backup: 'runcoach_daily',
-    _version: APP_VERSION,
-    _date: new Date().toISOString(),
-    data
-  }, null, 2)], { type: 'application/json' });
+  return { _backup: 'runcoach_daily', _version: APP_VERSION, _date: new Date().toISOString(), data };
+}
+
+function restoreFromBackupObject(json, origem) {
+  if (!json || json._backup !== 'runcoach_daily' || !json.data) {
+    toast('Backup inválido — não é um backup do Run Coach.', 'error');
+    return false;
+  }
+  const dataStr = json._date ? ` de ${new Date(json._date).toLocaleDateString('pt-BR')}` : '';
+  const ver = json._version ? ` (v${json._version})` : '';
+  const src = origem ? ` do ${origem}` : '';
+  if (!confirm(`Restaurar backup${ver}${dataStr}${src}?\n\nIsso substituirá TODOS os dados atuais (exceto tokens de API).\n\nEsta ação não pode ser desfeita.`)) return false;
+  backupKeys().forEach(k => localStorage.removeItem(k));
+  Object.entries(json.data).forEach(([k, v]) => {
+    if (!BACKUP_EXCLUDE_KEYS.includes(k)) localStorage.setItem(k, JSON.stringify(v));
+  });
+  toast('Backup restaurado! Recarregando…');
+  setTimeout(() => location.reload(), 800);
+  return true;
+}
+
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(buildBackupObject(), null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `runcoach_backup_${new Date().toISOString().slice(0, 10)}.json`;
@@ -4308,32 +4409,7 @@ function importBackup() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const json = JSON.parse(ev.target.result);
-        if (!json._backup || json._backup !== 'runcoach_daily' || !json.data) {
-          toast('Arquivo inválido — não é um backup do Run Coach.', 'error');
-          return;
-        }
-        const keys = Object.keys(json.data);
-        const forbidden = keys.filter(k => k === 'runcoach_intervals_key');
-        if (forbidden.length) {
-          toast('Backup contém chave de API — import bloqueado.', 'error');
-          return;
-        }
-        const dataStr = json._date ? ` de ${new Date(json._date).toLocaleDateString('pt-BR')}` : '';
-        const ver = json._version ? ` (v${json._version})` : '';
-        if (!confirm(`Restaurar backup${ver}${dataStr}?\n\nIsso substituirá TODOS os dados atuais (exceto chave de API do Intervals.icu).\n\nEsta ação não pode ser desfeita.`)) return;
-        const BACKUP_KEYS = [
-          KEYS.week, KEYS.logs, KEYS.history, KEYS.races,
-          AVALIACAO_KEY, SETTINGS_KEY, ACTIVE_WORKOUT_KEY, VERSION_KEY
-        ];
-        BACKUP_KEYS.forEach(k => localStorage.removeItem(k));
-        Object.entries(json.data).forEach(([k, v]) => {
-          if (k !== 'runcoach_intervals_key') {
-            localStorage.setItem(k, JSON.stringify(v));
-          }
-        });
-        toast('Backup restaurado! Recarregando…');
-        setTimeout(() => location.reload(), 800);
+        restoreFromBackupObject(JSON.parse(ev.target.result), '');
       } catch (err) {
         toast('Erro ao ler o arquivo: ' + err.message, 'error');
       }
@@ -4439,6 +4515,21 @@ function openSettingsModal() {
       <button class="btn" id="btnSaveIntervalsKey" style="margin-top:8px;font-size:13px;padding:10px">Salvar chave</button>
       <div id="intervalsKeyFeedback" style="display:none;font-size:13px;font-weight:600;margin-top:6px;text-align:center"></div>
     </div>
+    <div style="padding:14px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <div class="label" style="font-size:14px;font-weight:600">Backup na nuvem (GitHub)</div>
+        <button class="help-btn" id="btnGithubHelp" style="width:22px;height:22px;font-size:12px" aria-label="Ajuda">?</button>
+      </div>
+      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:8px">Backup automático em um Gist privado. Cole um token do GitHub com escopo "gist". Fica salvo só neste aparelho e nunca entra no export.</div>
+      <input type="password" id="setGithubToken" placeholder="Cole seu GitHub token aqui" value="${escapeHtml(getGithubToken())}" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);font-family:inherit;font-size:14px;background:var(--card);color:var(--text)">
+      <button class="btn" id="btnSaveGithubToken" style="margin-top:8px;font-size:13px;padding:10px">Salvar token e criar backup</button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn outline" id="btnGithubSyncNow" style="flex:1;font-size:13px;padding:10px">☁ Backup agora</button>
+        <button class="btn outline" id="btnGithubRestore" style="flex:1;font-size:13px;padding:10px">↓ Restaurar do GitHub</button>
+      </div>
+      <div id="githubFeedback" style="display:none;font-size:13px;font-weight:600;margin-top:8px;text-align:center"></div>
+      <div id="githubSyncInfo" class="sub" style="font-size:11px;color:var(--muted);margin-top:8px">${(() => { const m = getSyncMeta(); if (!m) return getGithubToken() ? 'Nenhuma sincronização ainda.' : ''; return `Última sincronização: ${new Date(m.at).toLocaleString('pt-BR')} · ${m.status === 'ok' ? '✅ ok' : '⚠ erro'}`; })()}</div>
+    </div>
     <div class="setting-row">
       <div>
         <div class="label">Histórico de versões</div>
@@ -4501,6 +4592,61 @@ function openSettingsModal() {
       fb.textContent = 'Chave removida';
     }
     setTimeout(() => { fb.style.display = 'none'; }, 2500);
+  });
+
+  const ghFb = back.querySelector('#githubFeedback');
+  const ghShow = (msg, cor) => { ghFb.style.display = 'block'; ghFb.style.color = cor || 'var(--muted)'; ghFb.textContent = msg; };
+  const ghInfoRefresh = () => {
+    const m = getSyncMeta();
+    const el = back.querySelector('#githubSyncInfo');
+    if (el) el.textContent = m ? `Última sincronização: ${new Date(m.at).toLocaleString('pt-BR')} · ${m.status === 'ok' ? '✅ ok' : '⚠ erro'}` : (getGithubToken() ? 'Nenhuma sincronização ainda.' : '');
+  };
+  back.querySelector('#btnGithubHelp').addEventListener('click', () => alert('Backup na nuvem via GitHub Gist privado.\n\n1. Acesse github.com/settings/tokens e gere um token com permissão de "gist".\n2. Cole o token aqui e toque em "Salvar token e criar backup".\n\nO app cria um Gist privado e passa a atualizá-lo automaticamente quando você registra treinos, conclui o protocolo ou cadastra corridas. O token fica só neste aparelho e nunca é incluído no export.'));
+
+  back.querySelector('#btnSaveGithubToken').addEventListener('click', async () => {
+    const val = back.querySelector('#setGithubToken').value.trim();
+    setGithubToken(val);
+    if (!val) { ghShow('Token removido', 'var(--muted)'); return; }
+    if (getGistId()) {
+      try { ghShow('Sincronizando...'); await doGistSync(); ghShow('✅ Token salvo e backup atualizado', 'var(--green)'); ghInfoRefresh(); }
+      catch (e) { ghShow('⚠ ' + e.message, 'var(--red)'); }
+      return;
+    }
+    try {
+      ghShow('Criando backup...');
+      const id = await githubCreateGist(val);
+      setGistId(id);
+      setSyncMeta({ at: new Date().toISOString(), status: 'ok' });
+      ghShow('✅ Backup privado criado no GitHub', 'var(--green)');
+      ghInfoRefresh();
+    } catch (e) { ghShow('⚠ ' + e.message, 'var(--red)'); }
+  });
+
+  back.querySelector('#btnGithubSyncNow').addEventListener('click', async () => {
+    const token = getGithubToken();
+    if (!token) { ghShow('Cole e salve um token primeiro', 'var(--red)'); return; }
+    try {
+      ghShow('Enviando backup...');
+      if (!getGistId()) { const id = await githubCreateGist(token); setGistId(id); }
+      else await githubUpdateGist(token, getGistId());
+      setSyncMeta({ at: new Date().toISOString(), status: 'ok' });
+      ghShow('✅ Backup atualizado', 'var(--green)');
+      ghInfoRefresh();
+    } catch (e) { setSyncMeta({ at: new Date().toISOString(), status: 'erro', erro: e.message }); ghShow('⚠ ' + e.message, 'var(--red)'); ghInfoRefresh(); }
+  });
+
+  back.querySelector('#btnGithubRestore').addEventListener('click', async () => {
+    const token = getGithubToken();
+    if (!token) { ghShow('Cole e salve um token primeiro', 'var(--red)'); return; }
+    try {
+      ghShow('Buscando backup no GitHub...');
+      let gistId = getGistId();
+      if (!gistId) { gistId = await githubFindBackupGistId(token); if (gistId) setGistId(gistId); }
+      if (!gistId) { ghShow('Nenhum backup encontrado nesta conta', 'var(--red)'); return; }
+      const json = await githubFetchGist(token, gistId);
+      back.remove();
+      restoreFromBackupObject(json, 'GitHub');
+    } catch (e) { ghShow('⚠ ' + e.message, 'var(--red)'); }
   });
 }
 
@@ -5070,6 +5216,13 @@ try {
   } catch (_) { document.body.innerHTML = '<div style="padding:40px;text-align:center;font-family:sans-serif"><h2>Erro ao carregar</h2><p>Recarregue a página.</p><button onclick="location.reload()">Recarregar</button></div>'; }
 }
 scheduleDailyRefresh();
+// Auto-sync na abertura: mantém o backup do GitHub fresco (inclui bump de versão).
+// Guardado para nunca sobrescrever o gist com dados vazios (ex: instalação nova).
+(function initGistSync() {
+  if (!getGithubToken() || !getGistId()) return;
+  const temDados = !!(localStorage.getItem(KEYS.week) || localStorage.getItem(KEYS.logs) || localStorage.getItem(KEYS.history) || localStorage.getItem(KEYS.races));
+  if (temDados) scheduleGistSync();
+})();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(reg => {
