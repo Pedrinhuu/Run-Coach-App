@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.10-1910",
+  "versao": "2026.07.10-1915",
   "data": "2026-07-10",
-  "novidades": ["v4.4.2: Textos de Ajustes esclarecem papel de cada backup"]
+  "novidades": ["v4.4.3: Seção JSON de exemplo compacta em Ajustes"]
 }
