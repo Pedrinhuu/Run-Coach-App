@@ -4022,8 +4022,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.4.1';
+const APP_VERSION = '4.4.2';
 const CHANGELOG = [
+  { v: '4.4.2', date: '2026-07-10', items: [
+    'Ajustes: textos dos backups deixam claro que o do GitHub é automático e o manual é complementar',
+  ]},
   { v: '4.4.1', date: '2026-07-10', items: [
     'JSON de exemplo para o coach em Ajustes, com botão Copiar e explicação dos campos',
   ]},
@@ -4541,7 +4544,7 @@ function openSettingsModal() {
         <div class="label" style="font-size:14px;font-weight:600">Backup na nuvem (GitHub)</div>
         <button class="help-btn" id="btnGithubHelp" style="width:22px;height:22px;font-size:12px" aria-label="Ajuda">?</button>
       </div>
-      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:8px">Backup automático em um Gist privado. Cole um token do GitHub com escopo "gist". Fica salvo só neste aparelho e nunca entra no export.</div>
+      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:8px">Seu backup automático principal. Depois de configurado, roda sozinho e salva seus dados em um Gist privado a cada mudança, protegendo contra perda de cache sem exigir ação manual. Cole um token do GitHub com escopo "gist". Fica salvo só neste aparelho e nunca entra no export.</div>
       <input type="password" id="setGithubToken" placeholder="Cole seu GitHub token aqui" value="${escapeHtml(getGithubToken())}" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);font-family:inherit;font-size:14px;background:var(--card);color:var(--text)">
       <button class="btn" id="btnSaveGithubToken" style="margin-top:8px;font-size:13px;padding:10px">Salvar token e criar backup</button>
       <div style="display:flex;gap:8px;margin-top:8px">
@@ -4560,7 +4563,7 @@ function openSettingsModal() {
     </div>
     <div style="padding:14px 0;border-bottom:1px solid var(--border)">
       <div class="label" style="font-size:14px;font-weight:600;margin-bottom:4px">Dados</div>
-      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:12px">Exporte um backup completo ou restaure dados de outro dispositivo.</div>
+      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:12px">Backup manual e portátil, complementar ao automático do GitHub. Gere um arquivo para migrar para outro aparelho sem depender de internet ou conta externa, ou para guardar um snapshot antes de uma ação arriscada (importar uma semana nova, resetar dados).</div>
       <div style="display:flex;gap:8px">
         <button class="btn outline" id="btnExportBackup" style="flex:1;font-size:13px;padding:10px">📦 Exportar backup</button>
         <button class="btn outline" id="btnImportBackup" style="flex:1;font-size:13px;padding:10px">📥 Importar backup</button>
