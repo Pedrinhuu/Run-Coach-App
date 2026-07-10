@@ -1722,6 +1722,15 @@ function validarProtocoloJoelho(pj) {
   return pj.exercicios.every(ex => ex.nome && ex.series && ex.reps && Array.isArray(ex.execucao));
 }
 
+// Validador único do JSON de importação de semana. Usado pelo parser de
+// "Importar próxima semana do coach" E para validar o JSON de exemplo,
+// garantindo uma só fonte de verdade do formato aceito.
+function validarSemanaImport(obj) {
+  if (!obj || typeof obj !== 'object') return { ok: false, erro: 'JSON inválido.' };
+  if (!Array.isArray(obj.treinos) || obj.treinos.length === 0) return { ok: false, erro: 'JSON sem campo "treinos" válido.' };
+  return { ok: true };
+}
+
 
 /* ========== PROTOCOLO JOELHO — CARROSSEL ========== */
 const PROTOCOLO_POS_KEY = 'runcoach_protocolo_posicao';
@@ -3121,8 +3130,9 @@ function previewSemana(back) {
   let nextWeek;
   try { nextWeek = JSON.parse(cleaned); }
   catch (e) { out.innerHTML = `<div class="card alert-red">JSON inválido: ${escapeHtml(e.message)}</div>`; return; }
-  if (!nextWeek.treinos || !Array.isArray(nextWeek.treinos) || nextWeek.treinos.length === 0) {
-    out.innerHTML = `<div class="card alert-red">JSON sem campo "treinos" válido.</div>`;
+  const val = validarSemanaImport(nextWeek);
+  if (!val.ok) {
+    out.innerHTML = `<div class="card alert-red">${escapeHtml(val.erro)}</div>`;
     return;
   }
 
@@ -3226,8 +3236,9 @@ function previewSemana(back) {
 
   newBtn.addEventListener('click', () => {
     try {
-      if (!nextWeek || !Array.isArray(nextWeek.treinos) || nextWeek.treinos.length === 0) {
-        toast('JSON inválido: campo treinos ausente ou vazio', 'error');
+      const valConfirm = validarSemanaImport(nextWeek);
+      if (!valConfirm.ok) {
+        toast('JSON inválido: ' + valConfirm.erro, 'error');
         return;
       }
       const temSemanaExistente = !!localStorage.getItem(KEYS.week);
@@ -4011,8 +4022,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.4.0';
+const APP_VERSION = '4.4.1';
 const CHANGELOG = [
+  { v: '4.4.1', date: '2026-07-10', items: [
+    'JSON de exemplo para o coach em Ajustes, com botão Copiar e explicação dos campos',
+  ]},
   { v: '4.4.0', date: '2026-07-10', items: [
     'Backup automático na nuvem via GitHub Gist privado (token fica só no aparelho)',
     'Restaurar dados do backup do GitHub em Ajustes',
@@ -4279,45 +4293,52 @@ const CHANGELOG = [
   ]},
 ];
 
-const JSON_SCHEMA_EXEMPLO = `{
-  "semana": 1,
-  "fase": "Base",
-  "foco_da_semana": "Adaptação aeróbica",
-  "alerta_coach": null,
-  "observacao_coach": "Mantenha pace controlado, sem forçar",
-  "estimativas_provas": [
-    {
-      "nome": "Minha Corrida 5K",
-      "data": "2026-09-15",
-      "distancia": "5K",
-      "tempo_estimado": "28'00\\"",
-      "pace_estimado": "5'36\\"/km",
-      "nova": true
-    }
-  ],
-  "treinos": [
-    {
-      "dia": "Segunda",
-      "tipo": "Corrida Leve",
-      "objetivo": "Volume aeróbico controlado",
-      "rua": {
-        "aquecimento": "5 min caminhada",
-        "principal": "20 min em pace 7'00\\"/km - 7'30\\"/km",
-        "desaquecimento": "5 min caminhada",
-        "duracao_total": "30 min",
-        "pace_alvo_central_segundos": 435
+// Fonte única do exemplo de importação: um objeto real, validado pelo mesmo
+// validarSemanaImport() que o parser usa. Gera a string exibida/copiada e
+// mantém o exemplo sempre sincronizado com o formato aceito pelo app.
+function exemploSemanaImport() {
+  return {
+    semana: 3,
+    fase: 'Base',
+    foco_da_semana: 'Retomada progressiva, volume controlado',
+    alerta_coach: null,
+    observacao_coach: 'Mantenha o pace confortável. Pare se o joelho incomodar.',
+    estimativas_provas: [
+      { nome: 'Corrida do Parque 10K', data: '2026-09-20', distancia: '10K', tempo_estimado: "55'00\"", pace_estimado: "5'30\"/km", nova: true }
+    ],
+    treinos: [
+      {
+        dia: 'Segunda', tipo: 'Corrida Leve', objetivo: 'Volume aeróbico controlado',
+        rua: { aquecimento: '5 min caminhada', zona_aquecimento: 'Z1', principal: "20 min contínuo em pace 7'45\"/km - 8'30\"/km", zona_principal: 'Z2', desaquecimento: '5 min caminhada', zona_desaquecimento: 'Z1', distancia_km: 2.5, duracao_total: '30 min', pace_alvo_central_segundos: 488 },
+        esteira: { aquecimento: '5 min a 5,0 km/h', zona_aquecimento: 'Z1', principal: '20 min a 7,0 km/h - 7,5 km/h', zona_principal: 'Z2', desaquecimento: '5 min a 5,0 km/h', zona_desaquecimento: 'Z1', distancia_km: 2.5, duracao_total: '30 min' }
       },
-      "esteira": {
-        "aquecimento": "5 min a 5,0 km/h",
-        "principal": "20 min a 8,0-8,5 km/h",
-        "desaquecimento": "5 min a 5,0 km/h",
-        "duracao_total": "30 min"
+      {
+        dia: 'Quinta', tipo: 'Fartlek', objetivo: 'Variação de ritmo em ciclos controlados',
+        rua: { aquecimento: '5 min caminhada', zona_aquecimento: 'Z1', principal: '21 min alternando 2 min leve + 1 min forte, 7 ciclos', zona_principal: 'Z3',
+          intervalos: { ciclos: 7, fases: [ { nome: 'Leve', duracao_segundos: 120, referencia: "Pace 7'30\"/km - 8'00\"/km" }, { nome: 'Forte', duracao_segundos: 60, referencia: "Pace 6'30\"/km - 6'45\"/km" } ] },
+          desaquecimento: '5 min caminhada', zona_desaquecimento: 'Z1', distancia_km: 2.8, duracao_total: '31 min', pace_alvo_central_segundos: 450 },
+        esteira: { aquecimento: '5 min a 5,0 km/h', zona_aquecimento: 'Z1', principal: '21 min alternando 2 min a 7,5 km/h + 1 min a 9,0 km/h, 7 ciclos', zona_principal: 'Z3',
+          intervalos: { ciclos: 7, fases: [ { nome: 'Leve', duracao_segundos: 120, referencia: '7,5 km/h' }, { nome: 'Forte', duracao_segundos: 60, referencia: '9,0 km/h' } ] },
+          desaquecimento: '5 min a 5,0 km/h', zona_desaquecimento: 'Z1', distancia_km: 2.8, duracao_total: '31 min' }
+      },
+      {
+        dia: 'Sábado', tipo: 'Longão', objetivo: 'Base aeróbica, treino mais importante da semana',
+        rua: { aquecimento: '5 min caminhada', zona_aquecimento: 'Z1', principal: "30 min contínuo em pace 7'45\"/km - 8'30\"/km", zona_principal: 'Z2', desaquecimento: '5 min caminhada', zona_desaquecimento: 'Z1', distancia_km: 3.5, duracao_total: '40 min', pace_alvo_central_segundos: 488 },
+        esteira: { aquecimento: '5 min a 5,0 km/h', zona_aquecimento: 'Z1', principal: '30 min a 7,0 km/h - 7,5 km/h', zona_principal: 'Z2', desaquecimento: '5 min a 5,0 km/h', zona_desaquecimento: 'Z1', distancia_km: 3.5, duracao_total: '40 min' }
       }
-    },
-    { "dia": "Quinta", "tipo": "...", "rua": {}, "esteira": {} },
-    { "dia": "Sábado", "tipo": "...", "rua": {}, "esteira": {} }
-  ]
-}`;
+    ],
+    protocolo_joelho: {
+      nome: 'Protocolo de Fortalecimento do Joelho',
+      dia: 'Terça',
+      duracao_estimada: '45-55 min',
+      exercicios: [
+        { nome: 'Ponte Glútea com Peso', series: 3, reps: 15, descanso_segundos: 60, execucao: ['Deite de costas, joelhos a 90 graus, pés no chão', 'Empurre o quadril para cima contraindo o glúteo', '2s subindo, 2s no topo, 2s descendo'], carga: 'Comece sem peso, adicione carga aos poucos.' },
+        { nome: 'Agachamento no Smith', series: 3, reps: 12, descanso_segundos: 90, execucao: ['Pés na largura dos ombros', 'Desça até 90 graus de joelho, não além', 'Joelhos alinhados com os pés'], carga: 'Sem peso adicional no início.' }
+      ]
+    }
+  };
+}
+function exemploSemanaJSON() { return JSON.stringify(exemploSemanaImport(), null, 2); }
 
 function openSchemaModal() {
   const back = document.createElement('div');
@@ -4325,7 +4346,7 @@ function openSchemaModal() {
   back.innerHTML = `<div class="modal">
     <h2>Formato do JSON</h2>
     <p class="muted" style="font-size:13px;margin-bottom:10px">Peça ao coach um JSON neste formato. Toque em "Copiar exemplo" para mandar pro chat.</p>
-    <pre style="background:var(--bg2);padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;font-family:monospace;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-all">${escapeHtml(JSON_SCHEMA_EXEMPLO)}</pre>
+    <pre style="background:var(--bg2);padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;font-family:monospace;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-all">${escapeHtml(exemploSemanaJSON())}</pre>
     <div class="muted" style="font-size:12px;margin-top:10px">
       <strong>Regras:</strong><br>
       • Dias dos treinos: você escolhe (ex: "Segunda", "Quinta", "Sábado")<br>
@@ -4340,7 +4361,7 @@ function openSchemaModal() {
   document.body.appendChild(back);
   back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
   back.querySelector('#schemaClose').addEventListener('click', () => back.remove());
-  back.querySelector('#schemaCopy').addEventListener('click', (e) => copiarTexto(JSON_SCHEMA_EXEMPLO, e.currentTarget));
+  back.querySelector('#schemaCopy').addEventListener('click', (e) => { copiarTexto(exemploSemanaJSON(), e.currentTarget); toast('JSON copiado!'); });
 }
 
 function resetarApp() {
@@ -4546,6 +4567,27 @@ function openSettingsModal() {
       </div>
       <div class="sub" style="font-size:11px;color:var(--muted);margin-top:8px">A chave de API do Intervals.icu não é incluída no backup por segurança.</div>
     </div>
+    ${(() => {
+      const valido = validarSemanaImport(exemploSemanaImport()).ok && validarProtocoloJoelho(exemploSemanaImport().protocolo_joelho);
+      return `<div style="padding:14px 0;border-bottom:1px solid var(--border)">
+      <div class="label" style="font-size:14px;font-weight:600;margin-bottom:4px">JSON de exemplo para o coach</div>
+      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:8px">Formato aceito no "Importar próxima semana do coach". Copie e envie para quem for gerar o plano (outro coach ou chat de IA). Troque os valores de exemplo por uma semana real.</div>
+      <div class="sub" style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+        <strong>O que cada campo significa:</strong><br>
+        • <code>semana</code>: número da semana no plano.<br>
+        • <code>fase</code>: fase do treino (ex: Base, Específico).<br>
+        • <code>foco_da_semana</code> / <code>observacao_coach</code>: objetivo e observação livre.<br>
+        • <code>alerta_coach</code>: aviso importante, ou null.<br>
+        • <code>treinos</code>: lista de treinos. Cada um com <code>dia</code>, <code>tipo</code>, <code>objetivo</code> e os blocos <code>rua</code> e <code>esteira</code>.<br>
+        • Em <code>rua</code>/<code>esteira</code>: <code>aquecimento</code>, <code>principal</code>, <code>desaquecimento</code>, <code>duracao_total</code>, <code>distancia_km</code>, zonas <code>Z1</code> a <code>Z5</code> e <code>pace_alvo_central_segundos</code> (pace em segundos por km). Treino intervalado usa <code>intervalos</code> com <code>ciclos</code> e <code>fases</code>.<br>
+        • <code>protocolo_joelho</code>: opcional. Fortalecimento com <code>dia</code> e <code>exercicios</code> (nome, series, reps, execucao).<br>
+        • <code>estimativas_provas</code>: opcional. Provas alvo; <code>"nova": true</code> cria, ou casa pelo nome para atualizar.
+      </div>
+      <span class="badge ${valido ? 'green' : 'red'}" style="margin-bottom:8px;display:inline-block">${valido ? '✓ válido para importação' : 'exemplo inválido'}</span>
+      <pre id="exemploJsonPre" style="background:var(--bg2);padding:12px;border-radius:8px;font-size:11px;max-height:220px;overflow:auto;font-family:monospace;line-height:1.5;color:var(--text);white-space:pre;margin:0">${escapeHtml(exemploSemanaJSON())}</pre>
+      <button class="btn" id="btnCopiarExemploJson" style="margin-top:10px;font-size:13px;padding:10px">📋 Copiar JSON</button>
+    </div>`;
+    })()}
     <div class="setting-row">
       <div>
         <div class="label" style="color:var(--red)">Apagar todos os dados</div>
@@ -4562,6 +4604,8 @@ function openSettingsModal() {
   back.querySelector('#btnReset').addEventListener('click', () => { back.remove(); resetarApp(); });
   back.querySelector('#btnExportBackup').addEventListener('click', () => exportBackup());
   back.querySelector('#btnImportBackup').addEventListener('click', () => { back.remove(); importBackup(); });
+  const btnCopiarEx = back.querySelector('#btnCopiarExemploJson');
+  if (btnCopiarEx) btnCopiarEx.addEventListener('click', (e) => { copiarTexto(exemploSemanaJSON(), e.currentTarget); toast('JSON copiado!'); });
   back.querySelector('#setNome').addEventListener('change', (e) => {
     const cur = getSettings();
     setSettings({ ...cur, name: e.target.value.trim() });
