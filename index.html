@@ -243,6 +243,8 @@
   .switch::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform .2s}
   .switch.on::after{transform:translateX(20px)}
   .setting-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+  .settings-header{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--accent);margin:20px 0 2px}
+  .settings-header:first-of-type{margin-top:8px}
   .setting-row:last-child{border-bottom:none}
   .setting-row .label{font-size:14px;font-weight:600}
   .setting-row .sub{font-size:12px;color:var(--muted);margin-top:2px}
@@ -4023,8 +4025,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.4.3';
+const APP_VERSION = '4.4.4';
 const CHANGELOG = [
+  { v: '4.4.4', date: '2026-07-10', items: [
+    'Ajustes reorganizado em seções: Perfil, Integrações, Backup e dados, Sobre e Zona de risco',
+  ]},
   { v: '4.4.3', date: '2026-07-10', items: [
     'JSON de exemplo em Ajustes ficou compacto: JSON e explicação agora ficam em "Ver JSON e campos"',
   ]},
@@ -4518,6 +4523,7 @@ function openSettingsModal() {
   back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal">
     <h2>Configurações</h2>
+    <div class="settings-header">Perfil</div>
     <div class="field"><label>Seu nome</label><input type="text" id="setNome" placeholder="Como devemos te chamar?" value="${escapeHtml(s.name || '')}"></div>
     <div class="setting-row">
       <div>
@@ -4533,6 +4539,7 @@ function openSettingsModal() {
       </div>
       <div class="switch ${s.mute ? 'on' : ''}" id="swMute" role="switch" aria-checked="${s.mute}"></div>
     </div>
+    <div class="settings-header">Integrações</div>
     <div style="padding:14px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
         <div class="label" style="font-size:14px;font-weight:600">Intervals.icu API Key</div>
@@ -4543,6 +4550,7 @@ function openSettingsModal() {
       <button class="btn" id="btnSaveIntervalsKey" style="margin-top:8px;font-size:13px;padding:10px">Salvar chave</button>
       <div id="intervalsKeyFeedback" style="display:none;font-size:13px;font-weight:600;margin-top:6px;text-align:center"></div>
     </div>
+    <div class="settings-header">Backup e dados</div>
     <div style="padding:14px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
         <div class="label" style="font-size:14px;font-weight:600">Backup na nuvem (GitHub)</div>
@@ -4557,13 +4565,6 @@ function openSettingsModal() {
       </div>
       <div id="githubFeedback" style="display:none;font-size:13px;font-weight:600;margin-top:8px;text-align:center"></div>
       <div id="githubSyncInfo" class="sub" style="font-size:11px;color:var(--muted);margin-top:8px">${(() => { const m = getSyncMeta(); if (!m) return getGithubToken() ? 'Nenhuma sincronização ainda.' : ''; return `Última sincronização: ${new Date(m.at).toLocaleString('pt-BR')} · ${m.status === 'ok' ? '✅ ok' : '⚠ erro'}`; })()}</div>
-    </div>
-    <div class="setting-row">
-      <div>
-        <div class="label">Histórico de versões</div>
-        <div class="sub">v${APP_VERSION} · veja o que mudou</div>
-      </div>
-      <button class="btn outline" id="btnChangelog" style="width:auto;padding:8px 14px;font-size:13px">Ver</button>
     </div>
     <div style="padding:14px 0;border-bottom:1px solid var(--border)">
       <div class="label" style="font-size:14px;font-weight:600;margin-bottom:4px">Dados</div>
@@ -4600,6 +4601,15 @@ function openSettingsModal() {
       </details>
     </div>`;
     })()}
+    <div class="settings-header">Sobre</div>
+    <div class="setting-row">
+      <div>
+        <div class="label">Histórico de versões</div>
+        <div class="sub">v${APP_VERSION} · veja o que mudou</div>
+      </div>
+      <button class="btn outline" id="btnChangelog" style="width:auto;padding:8px 14px;font-size:13px">Ver</button>
+    </div>
+    <div class="settings-header" style="color:var(--red)">Zona de risco</div>
     <div class="setting-row">
       <div>
         <div class="label" style="color:var(--red)">Apagar todos os dados</div>
