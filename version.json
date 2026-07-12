@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.12-1152",
+  "versao": "2026.07.12-2055",
   "data": "2026-07-12",
-  "novidades": ["v4.4.5: Corrige aderência (dupla contagem e total inflado)"]
+  "novidades": ["v4.4.6: Gráfico de carga sem sobreposição de labels"]
 }
