@@ -1482,7 +1482,9 @@ function renderMetricas() {
     const svgTotalW = 300;
     const pad = 10, gap = Math.max(6, Math.round(60 / nBars));
     const barW = Math.floor((svgTotalW - pad * 2 - gap * (nBars - 1)) / nBars);
-    const svgH = 160, chartH = 120, padTop = 10;
+    // Áreas reservadas: valor em km acima das barras, nome da semana abaixo do eixo.
+    const valueTopArea = 18, chartH = 116, bottomArea = 20, padTop = valueTopArea;
+    const svgH = valueTopArea + chartH + bottomArea;
     let bars = '';
     const labelFs = nBars <= 4 ? 11 : nBars <= 6 ? 10 : 9;
     m.carga4sem.forEach((s, i) => {
@@ -1490,12 +1492,17 @@ function renderMetricas() {
       const h = vol > 0 ? Math.max(4, (vol / maxVol) * chartH) : 4;
       const x = pad + i * (barW + gap);
       const y = padTop + chartH - h;
+      const cx = x + barW / 2;
       const isAtual = !!s.isAtual;
       const opacity = isAtual ? (vol > 0 ? '1' : '0.4') : '0.6';
       bars += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="#f97316" opacity="${opacity}"/>`;
-      const labelTxt = `${s.label} · ${vol > 0 ? vol.toFixed(1) : '0'}km`;
-      const labelColor = vol === 0 ? '#6b7280' : '#9ca3af';
-      bars += `<text x="${x + barW/2}" y="${padTop + chartH + 15}" text-anchor="middle" font-size="${labelFs}" fill="${labelColor}">${escapeHtml(labelTxt)}</text>`;
+      // Valor em km acima do topo da barra (y mínimo para não cortar no topo, mesmo em 0km).
+      const valY = Math.max(12, y - 5);
+      const valColor = vol === 0 ? '#6b7280' : '#9ca3af';
+      const valTxt = `${vol > 0 ? vol.toFixed(1) : '0'}km`;
+      bars += `<text x="${cx}" y="${valY}" text-anchor="middle" font-size="${labelFs}" font-weight="600" fill="${valColor}">${escapeHtml(valTxt)}</text>`;
+      // Nome da semana como label do eixo X, abaixo das barras.
+      bars += `<text x="${cx}" y="${padTop + chartH + 14}" text-anchor="middle" font-size="${labelFs}" fill="#9ca3af">${escapeHtml(s.label)}</text>`;
     });
     html += `<div class="card" style="position:relative">
       ${mHelp('carga')}
@@ -4023,8 +4030,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.4.5';
+const APP_VERSION = '4.4.6';
 const CHANGELOG = [
+  { v: '4.4.6', date: '2026-07-10', items: [
+    'Gráfico de carga: nome da semana embaixo e km acima de cada barra, sem sobreposição em telas estreitas',
+  ]},
   { v: '4.4.5', date: '2026-07-10', items: [
     'Aderência conta só as atividades visíveis da semana (corridas + protocolo), sem inflar total nem concluídos',
     'Semana concluída na Home só quando todas as atividades, incluindo o protocolo, estão concluídas',
