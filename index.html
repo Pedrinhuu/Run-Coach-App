@@ -948,21 +948,18 @@ function renderResumeBanner() {
 }
 
 function calcAderencia(w) {
-  const treinosCorrida = (w.treinos || []).filter(t => ehTreinoCorrida(t.tipo));
-  const previstos = treinosCorrida.length;
-  const concluidosTreinos = treinosCorrida.filter(t => t.status === 'Concluído');
-  let concluidos = concluidosTreinos.length;
-  const temProt = weekHasProtocolo(w);
-  const regProt = temProt ? registroProtocoloSemanaAtual() : null;
-  if (regProt) concluidos += 1;
-
-  // Diagnóstico de aderência (numerador lê apenas w.treinos da semana atual, nunca o histórico)
-  const { inicio, fim } = intervaloSemanaAtual();
-  console.log('[Aderência] Semana atual (Segunda a Domingo):', inicio, 'a', fim);
-  console.log('[Aderência] Treinos concluídos contados:', concluidosTreinos.map(t => `${t.dia}/${t.tipo}${t.data_efetiva ? ' [' + t.data_efetiva + ']' : ''}`));
-  console.log('[Aderência] weekHasProtocolo:', temProt, '| protocolo concluído na semana:', !!regProt, regProt ? '(registro ' + regProt.data + ')' : '');
-  console.log('[Aderência] Resultado:', concluidos + '/' + previstos);
-
+  // Conta exatamente as atividades visíveis na tela Semana: treinos de corrida
+  // com bloco (rua/esteira) mais o protocolo de joelho como uma única atividade.
+  // Evita inflar o denominador com entradas sem bloco (ex: um "Protocolo" ou
+  // "CT" no array de treinos) e evita contar o protocolo duas vezes.
+  const treinosCorrida = (w.treinos || []).filter(t => ehTreinoCorrida(t.tipo) && (t.rua || t.esteira));
+  let previstos = treinosCorrida.length;
+  let concluidos = treinosCorrida.filter(t => t.status === 'Concluído').length;
+  const pj = getProtocoloJoelho();
+  if (pj && Array.isArray(pj.exercicios) && pj.exercicios.length > 0) {
+    previstos += 1;
+    if (protocoloConcluidoNaSemanaAtual()) concluidos += 1;
+  }
   return { previstos, concluidos, pct: previstos > 0 ? Math.round((concluidos / previstos) * 100) : null };
 }
 
@@ -1021,9 +1018,7 @@ function renderSemana() {
     html += `<div class="empty">Nenhum treino programado para esta semana</div>`;
   }
 
-  const protStatus = getProtocoloStatus();
-  const hoje = new Date().toISOString().split('T')[0];
-  const protConcluido = protStatus.some(r => r.data === hoje && r.concluido);
+  const protConcluido = protocoloConcluidoNaSemanaAtual();
 
   for (const item of items) {
     if (item.tipo === 'corrida') {
@@ -1331,8 +1326,11 @@ function calcMetricas() {
   const distSem = logsSemana.reduce((a, l) => a + (l.distancia || 0), 0);
   const tempoSem = logsSemana.reduce((a, l) => a + tempoDeLog(l), 0);
   const treinosCorridaSem = w.treinos.filter(t => ehTreinoCorrida(t.tipo));
-  let concluidosSem = treinosCorridaSem.filter(t => t.status === 'Concluído').length;
-  if (weekHasProtocolo(w) && protocoloConcluidoNaSemanaAtual()) concluidosSem += 1;
+  // Resumo de treinos da semana usa a mesma contagem da aderência (Home e Semana),
+  // para consistência total entre as telas.
+  const aderSem = calcAderencia(w);
+  const concluidosSem = aderSem.concluidos;
+  const previstosSem = aderSem.previstos;
   const pseSem = avgNums(logsSemana.map(l => l.pse).filter(x => x != null));
 
   const totLog = logs.length;
@@ -1411,7 +1409,7 @@ function calcMetricas() {
   carga4sem.forEach((s, i) => { s.label = `Sem ${i + 1}`; });
 
   return {
-    semanaNum: w.semana_atual, fase: w.fase, concluidosSem, previstosSem: treinosCorridaSem.length, distSem, tempoSem, pseSem,
+    semanaNum: w.semana_atual, fase: w.fase, concluidosSem, previstosSem, distSem, tempoSem, pseSem,
     totLog, distTot, tempoTot, pseTot, paceMedio, melhorPace, semanasNoPlano, adesao,
     joelhoLeve, joelhoMod, naoSeguiu, porTipo, primAvg, ultAvg, evolucao, streak,
     carga4sem,
@@ -4025,8 +4023,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.4.4';
+const APP_VERSION = '4.4.5';
 const CHANGELOG = [
+  { v: '4.4.5', date: '2026-07-10', items: [
+    'Aderência conta só as atividades visíveis da semana (corridas + protocolo), sem inflar total nem concluídos',
+    'Semana concluída na Home só quando todas as atividades, incluindo o protocolo, estão concluídas',
+  ]},
   { v: '4.4.4', date: '2026-07-10', items: [
     'Ajustes reorganizado em seções: Perfil, Integrações, Backup e dados, Sobre e Zona de risco',
   ]},
