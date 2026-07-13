@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.13-1229",
+  "versao": "2026.07.13-1837",
   "data": "2026-07-13",
-  "novidades": ["v4.5.2: JSON de schema antigo não trava mais a navegação (Semana / Ver treino)"]
+  "novidades": ["v4.5.3: Data de prova inválida não trava mais o import (Invalid time value)"]
 }
