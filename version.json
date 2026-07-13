@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.13-1137",
+  "versao": "2026.07.13-1229",
   "data": "2026-07-13",
-  "novidades": ["v4.5.1: Guia do coach em branco (sem dados pessoais) e import de PRs"]
+  "novidades": ["v4.5.2: JSON de schema antigo não trava mais a navegação (Semana / Ver treino)"]
 }
