@@ -477,8 +477,25 @@ const APP_INITIALIZED = !!localStorage.getItem(KEYS.week);
 const DIAS_MAP = { Segunda:1, Terça:2, Quarta:3, Quinta:4, Sexta:5, Sábado:6, Domingo:0 };
 const DIAS_NOMES = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 
+// Normaliza uma data em formatos comuns para YYYY-MM-DD. Retorna null se não
+// for interpretável (evita "Invalid time value" ao chamar toISOString depois).
+function parseDataSegura(valor) {
+  if (valor == null) return null;
+  const s = String(valor).trim();
+  if (!s) return null;
+  const valida = (iso) => { const d = new Date(iso + 'T12:00:00'); return isNaN(d.getTime()) ? null : iso; };
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); // ISO (aceita 1 ou 2 dígitos)
+  if (m) return valida(`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`);
+  m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/); // DD/MM/YYYY
+  if (m) return valida(`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`);
+  m = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/); // YYYY/MM/DD
+  if (m) return valida(`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`);
+  return null; // ano solto ("2027"), vazio ou formato desconhecido: não interpretável
+}
+
 function fmtDateBR(iso) {
   const d = new Date(iso + 'T12:00:00');
+  if (isNaN(d.getTime())) return String(iso || '');
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 function todayISO() { return new Date().toISOString().slice(0,10); }
@@ -788,12 +805,15 @@ function statusBadge(status) {
 function predictedDate(trainIdx) {
   const w = getWeek();
   const t = w.treinos[trainIdx];
+  if (!t) return null;
   if (t.data_prevista) return t.data_prevista;
   // estimate: this week's occurrence of that weekday
-  const today = new Date();
   const target = DIAS_MAP[t.dia];
+  if (target == null) return null; // dia ausente/inválido (schema antigo): sem data prevista
+  const today = new Date();
   const diff = (target - today.getDay() + 7) % 7;
   const d = new Date(today); d.setDate(today.getDate() + diff);
+  if (isNaN(d.getTime())) return null;
   return d.toISOString().slice(0,10);
 }
 
@@ -832,9 +852,12 @@ function proximaAtividadeSemana(w) {
 function isPastPredicted(trainIdx) {
   const w = getWeek();
   const t = w.treinos[trainIdx];
-  if (t.status !== 'Pendente') return false;
+  if (!t || t.status !== 'Pendente') return false;
   const dp = predictedDate(trainIdx);
-  return new Date(dp + 'T23:59:59') < new Date();
+  if (!dp) return false;
+  const d = new Date(dp + 'T23:59:59');
+  if (isNaN(d.getTime())) return false;
+  return d < new Date();
 }
 
 function retomarTreino() {
@@ -1265,18 +1288,23 @@ function renderCorridasSubTab() {
     return html;
   }
 
-  // Ordenação: futuras (crescente) > passadas com resultado (decrescente) > passadas sem resultado (decrescente)
-  const futuras = all.filter(r => r.date >= today).sort((a, b) => a.date.localeCompare(b.date));
-  const passComRes = all.filter(r => r.date < today && r.resultado).sort((a, b) => b.date.localeCompare(a.date));
-  const passSemRes = all.filter(r => r.date < today && !r.resultado).sort((a, b) => b.date.localeCompare(a.date));
+  // Data normalizada por corrida (null se não interpretável): à prova de schema antigo.
+  const dataDe = (r) => parseDataSegura(r.date);
+  // Ordenação: futuras (crescente) > passadas com resultado (decrescente) > passadas sem resultado (decrescente) > sem data
+  const cmp = (a, b, dir) => dir * String(dataDe(a)).localeCompare(String(dataDe(b)));
+  const futuras = all.filter(r => { const d = dataDe(r); return d && d >= today; }).sort((a, b) => cmp(a, b, 1));
+  const passComRes = all.filter(r => { const d = dataDe(r); return d && d < today && r.resultado; }).sort((a, b) => cmp(a, b, -1));
+  const passSemRes = all.filter(r => { const d = dataDe(r); return d && d < today && !r.resultado; }).sort((a, b) => cmp(a, b, -1));
+  const semData = all.filter(r => !dataDe(r));
   const nextRace = futuras[0];
-  const ordered = [...futuras, ...passComRes, ...passSemRes];
+  const ordered = [...futuras, ...passComRes, ...passSemRes, ...semData];
 
   for (const r of ordered) {
-    const isPast = r.date < today;
+    const dataOk = dataDe(r);
+    const isPast = !!dataOk && dataOk < today;
     const hasResult = !!r.resultado;
     const isNext = nextRace && r.id === nextRace.id;
-    const days = daysBetween(today, r.date);
+    const days = dataOk ? daysBetween(today, dataOk) : null;
 
     let borda = '';
     if (hasResult) borda = 'border:2px solid #22c55e';
@@ -1286,6 +1314,8 @@ function renderCorridasSubTab() {
     let statusLine;
     if (hasResult) {
       statusLine = `<div class="countdown" style="color:#22c55e;font-weight:700">Concluída ✓</div>`;
+    } else if (!dataOk) {
+      statusLine = `<div class="countdown" style="color:#eab308;font-weight:700">Data a definir</div>`;
     } else if (isPast) {
       statusLine = `<div class="countdown" style="color:#eab308;font-weight:700">Aguardando resultado</div>`;
     } else {
@@ -1326,7 +1356,7 @@ function renderCorridasSubTab() {
           <button class="help-btn" data-action="delete-race" data-id="${r.id}" aria-label="Remover" style="width:24px;height:24px;font-size:12px">✕</button>
         </div>
       </div>
-      <div class="date">${fmtDateBR(r.date)}</div>
+      <div class="date">${dataOk ? fmtDateBR(dataOk) : (r.date ? escapeHtml(String(r.date)) + ' (rever data)' : 'Data não definida')}</div>
       ${statusLine}
       ${corpo}
     </div>`;
@@ -3479,6 +3509,9 @@ function previewSemana(back) {
       if (protErro) {
         setTimeout(() => toast('Protocolo de joelho não pôde ser lido. Verifique o formato.', 'error'), 1500);
       }
+      if (resumo.datasIgnoradas > 0) {
+        setTimeout(() => toast(`${resumo.datasIgnoradas} data de prova em formato inválido foi ignorada. Ajuste em Corridas.`, 'error'), protErro ? 3000 : 1500);
+      }
     } catch (e) {
       console.error('Erro ao importar semana:', e);
       toast('Erro ao importar: ' + e.message, 'error');
@@ -3487,13 +3520,19 @@ function previewSemana(back) {
 }
 
 function aplicarEstimativasProvas(estimativas) {
-  if (!Array.isArray(estimativas) || estimativas.length === 0) return { atualizadas: 0, criadas: 0 };
+  if (!Array.isArray(estimativas) || estimativas.length === 0) return { atualizadas: 0, criadas: 0, datasIgnoradas: 0 };
   const races = getRaces();
-  let atualizadas = 0, criadas = 0;
+  let atualizadas = 0, criadas = 0, datasIgnoradas = 0;
   const norm = (s) => String(s || '').trim().toLowerCase();
 
   for (const e of estimativas) {
     if (!e || !e.nome) continue;
+    // Normaliza a data com segurança; formato desconhecido vira null (sem travar o import).
+    let dataOk = null;
+    if (e.data != null && String(e.data).trim() !== '') {
+      dataOk = parseDataSegura(e.data);
+      if (dataOk == null) datasIgnoradas++;
+    }
     const nomeAlvo = norm(e.nome);
     const idx = races.findIndex(r => norm(r.name) === nomeAlvo);
 
@@ -3501,7 +3540,7 @@ function aplicarEstimativasProvas(estimativas) {
       const r = races[idx];
       if (e.tempo_estimado) r.time_estimate = String(e.tempo_estimado);
       if (e.pace_estimado) r.estimate_pace = String(e.pace_estimado);
-      if (e.data) r.date = String(e.data);
+      if (dataOk) r.date = dataOk;
       if (e.distancia) r.distance = String(e.distancia);
       races[idx] = r;
       atualizadas++;
@@ -3512,7 +3551,7 @@ function aplicarEstimativasProvas(estimativas) {
       races.push({
         id: 'r' + Date.now() + Math.floor(Math.random() * 1000),
         name: String(e.nome),
-        date: e.data ? String(e.data) : null,
+        date: dataOk,
         distance: String(e.distancia || '-'),
         time_estimate: e.tempo_estimado ? String(e.tempo_estimado) : null,
         estimate_pace: e.pace_estimado ? String(e.pace_estimado) : null,
@@ -3521,7 +3560,7 @@ function aplicarEstimativasProvas(estimativas) {
     }
   }
   if (atualizadas || criadas) setRaces(races);
-  return { atualizadas, criadas };
+  return { atualizadas, criadas, datasIgnoradas };
 }
 
 /* ========== METRIC HELP ========== */
@@ -4214,8 +4253,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.5.2';
+const APP_VERSION = '4.5.3';
 const CHANGELOG = [
+  { v: '4.5.3', date: '2026-07-10', items: [
+    'Correção: data de prova inválida não trava mais o "Confirmar e salvar" (erro Invalid time value)',
+    'Datas em DD/MM/AAAA são normalizadas; datas não interpretáveis são ignoradas com aviso',
+  ]},
   { v: '4.5.2', date: '2026-07-10', items: [
     'Correção: importar uma semana em formato antigo não trava mais a navegação (Semana e Ver treino)',
     'Blindagem contra dados de schema antigo, com recuperação amigável em vez de tela travada',
