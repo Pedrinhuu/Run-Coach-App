@@ -3423,6 +3423,24 @@ function previewSemana(back) {
         }
       }
 
+      // PRs manuais (melhores tempos informados) viram recorde no app, como piso de comparação.
+      if (Array.isArray(nextWeek.prs_manuais) && nextWeek.prs_manuais.length) {
+        const manuais = getPRsManuais();
+        let algum = false;
+        nextWeek.prs_manuais.forEach(p => {
+          if (!p) return;
+          const km = Number(p.distancia_km);
+          const seg = parseTempo(p.tempo);
+          if (!km || km <= 0 || !seg) return;
+          const key = Math.round(km * 10) / 10;
+          if (!manuais[key] || seg < manuais[key].tempo_segundos) {
+            manuais[key] = { tempo: fmtTempoInput(seg), tempo_segundos: seg, pace: paceResultado(seg, km) || null, origem: 'manual', data: p.data || null };
+            algum = true;
+          }
+        });
+        if (algum) setPRsManuais(manuais);
+      }
+
       trainModeByIdx = {};
       back.remove();
       setTab('semana');
@@ -4172,8 +4190,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.5.0';
+const APP_VERSION = '4.5.1';
 const CHANGELOG = [
+  { v: '4.5.1', date: '2026-07-10', items: [
+    'Guia para o coach agora vem em branco (sem dados pessoais), com as perguntas a fazer ao novo usuário',
+    'Importação aceita prs_manuais (melhores tempos) e já cria os recordes no app',
+  ]},
   { v: '4.5.0', date: '2026-07-10', items: [
     'Definir PR manual por distância (piso de comparação), com etiqueta "manual"',
     'Animação de confete ao registrar um resultado que bate o recorde da distância',
@@ -4466,72 +4488,79 @@ const CHANGELOG = [
 // Fonte única do exemplo de importação: um objeto real, validado pelo mesmo
 // validarSemanaImport() que o parser usa. Gera a string exibida/copiada e
 // mantém o exemplo sempre sincronizado com o formato aceito pelo app.
-function exemploSemanaImport() {
+// Modelo EM BRANCO do JSON de importação (sem nenhum dado pessoal). Serve de guia
+// para o coach preencher com base nas respostas do usuário.
+function templateSemanaImport() {
   return {
-    semana: 3,
-    fase: 'Base',
-    foco_da_semana: 'Retomada progressiva, volume controlado',
+    semana: 1,
+    fase: "",
+    foco_da_semana: "",
     alerta_coach: null,
-    observacao_coach: 'Mantenha o pace confortável. Pare se o joelho incomodar.',
+    observacao_coach: "",
+    prs_manuais: [
+      { distancia_km: 0, tempo: "" }
+    ],
     estimativas_provas: [
-      { nome: 'Corrida do Parque 10K', data: '2026-09-20', distancia: '10K', tempo_estimado: "55'00\"", pace_estimado: "5'30\"/km", nova: true }
+      { nome: "", data: "", distancia: "", tempo_estimado: "", pace_estimado: "", nova: true }
     ],
     treinos: [
       {
-        dia: 'Segunda', tipo: 'Corrida Leve', objetivo: 'Volume aeróbico controlado',
-        rua: { aquecimento: '5 min caminhada', zona_aquecimento: 'Z1', principal: "20 min contínuo em pace 7'45\"/km - 8'30\"/km", zona_principal: 'Z2', desaquecimento: '5 min caminhada', zona_desaquecimento: 'Z1', distancia_km: 2.5, duracao_total: '30 min', pace_alvo_central_segundos: 488 },
-        esteira: { aquecimento: '5 min a 5,0 km/h', zona_aquecimento: 'Z1', principal: '20 min a 7,0 km/h - 7,5 km/h', zona_principal: 'Z2', desaquecimento: '5 min a 5,0 km/h', zona_desaquecimento: 'Z1', distancia_km: 2.5, duracao_total: '30 min' }
-      },
-      {
-        dia: 'Quinta', tipo: 'Fartlek', objetivo: 'Variação de ritmo em ciclos controlados',
-        rua: { aquecimento: '5 min caminhada', zona_aquecimento: 'Z1', principal: '21 min alternando 2 min leve + 1 min forte, 7 ciclos', zona_principal: 'Z3',
-          intervalos: { ciclos: 7, fases: [ { nome: 'Leve', duracao_segundos: 120, referencia: "Pace 7'30\"/km - 8'00\"/km" }, { nome: 'Forte', duracao_segundos: 60, referencia: "Pace 6'30\"/km - 6'45\"/km" } ] },
-          desaquecimento: '5 min caminhada', zona_desaquecimento: 'Z1', distancia_km: 2.8, duracao_total: '31 min', pace_alvo_central_segundos: 450 },
-        esteira: { aquecimento: '5 min a 5,0 km/h', zona_aquecimento: 'Z1', principal: '21 min alternando 2 min a 7,5 km/h + 1 min a 9,0 km/h, 7 ciclos', zona_principal: 'Z3',
-          intervalos: { ciclos: 7, fases: [ { nome: 'Leve', duracao_segundos: 120, referencia: '7,5 km/h' }, { nome: 'Forte', duracao_segundos: 60, referencia: '9,0 km/h' } ] },
-          desaquecimento: '5 min a 5,0 km/h', zona_desaquecimento: 'Z1', distancia_km: 2.8, duracao_total: '31 min' }
-      },
-      {
-        dia: 'Sábado', tipo: 'Longão', objetivo: 'Base aeróbica, treino mais importante da semana',
-        rua: { aquecimento: '5 min caminhada', zona_aquecimento: 'Z1', principal: "30 min contínuo em pace 7'45\"/km - 8'30\"/km", zona_principal: 'Z2', desaquecimento: '5 min caminhada', zona_desaquecimento: 'Z1', distancia_km: 3.5, duracao_total: '40 min', pace_alvo_central_segundos: 488 },
-        esteira: { aquecimento: '5 min a 5,0 km/h', zona_aquecimento: 'Z1', principal: '30 min a 7,0 km/h - 7,5 km/h', zona_principal: 'Z2', desaquecimento: '5 min a 5,0 km/h', zona_desaquecimento: 'Z1', distancia_km: 3.5, duracao_total: '40 min' }
+        dia: "",
+        tipo: "",
+        objetivo: "",
+        rua: { aquecimento: "", principal: "", desaquecimento: "", duracao_total: "", distancia_km: 0, pace_alvo_central_segundos: 0 },
+        esteira: { aquecimento: "", principal: "", desaquecimento: "", duracao_total: "", distancia_km: 0 }
       }
     ],
-    protocolo_joelho: {
-      nome: 'Protocolo de Fortalecimento do Joelho',
-      dia: 'Terça',
-      duracao_estimada: '45-55 min',
-      exercicios: [
-        { nome: 'Ponte Glútea com Peso', series: 3, reps: 15, descanso_segundos: 60, execucao: ['Deite de costas, joelhos a 90 graus, pés no chão', 'Empurre o quadril para cima contraindo o glúteo', '2s subindo, 2s no topo, 2s descendo'], carga: 'Comece sem peso, adicione carga aos poucos.' },
-        { nome: 'Agachamento no Smith', series: 3, reps: 12, descanso_segundos: 90, execucao: ['Pés na largura dos ombros', 'Desça até 90 graus de joelho, não além', 'Joelhos alinhados com os pés'], carga: 'Sem peso adicional no início.' }
-      ]
-    }
+    protocolo_joelho: null
   };
 }
-function exemploSemanaJSON() { return JSON.stringify(exemploSemanaImport(), null, 2); }
+
+// Guia completo (perguntas + modelo em branco + regras) para colar no chat do coach.
+function guiaCoachTexto() {
+  const modelo = JSON.stringify(templateSemanaImport(), null, 2);
+  return [
+    'Você vai ser meu coach de corrida no app Run Coach Daily. Para montar meu plano, me devolva um JSON exatamente no formato do modelo em branco mais abaixo.',
+    '',
+    'Antes de montar, me faça estas perguntas (pule as que eu já tiver respondido):',
+    '1) Qual a sua meta principal? (ex: voltar a correr, emagrecer, completar uma prova sem dor)',
+    '2) Tem alguma corrida alvo? Me diga nome, data e distância, para cadastrar a prova no app.',
+    '3) Qual o seu melhor tempo já feito em alguma distância? (ex: 5K em 30:00), para registrar como recorde pessoal.',
+    '4) Sente dor no joelho ou alguma lesão/limitação? Se sim, inclua um protocolo de fortalecimento.',
+    '5) Quantos dias por semana consegue treinar e onde (rua, esteira ou ambos)?',
+    '6) Qual seu ritmo/volume recente (km por semana, pace confortável)?',
+    '',
+    'Com as respostas, gere UMA semana preenchendo este modelo (sem deixar em branco o que você já souber):',
+    '',
+    modelo,
+    '',
+    'Regras:',
+    '- "treinos": uma entrada por dia de treino, com "dia" (Segunda a Domingo), "tipo", "objetivo" e os blocos "rua" e "esteira".',
+    '- "pace_alvo_central_segundos": pace em segundos por km (ex: 7\'30" = 450).',
+    '- Treino intervalado usa "intervalos" com "ciclos" e "fases".',
+    '- "prs_manuais": melhores tempos que eu já tenho, no formato { "distancia_km": 5, "tempo": "30:00" }. Se não houver, use [].',
+    '- "estimativas_provas": corrida(s) alvo. Se não houver, use [].',
+    '- "protocolo_joelho": só se houver dor/lesão; senão use null.',
+    '- Devolva apenas o JSON preenchido, sem texto ao redor.'
+  ].join('\n');
+}
 
 function openSchemaModal() {
   const back = document.createElement('div');
   back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal">
-    <h2>Formato do JSON</h2>
-    <p class="muted" style="font-size:13px;margin-bottom:10px">Peça ao coach um JSON neste formato. Toque em "Copiar exemplo" para mandar pro chat.</p>
-    <pre style="background:var(--bg2);padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;font-family:monospace;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-all">${escapeHtml(exemploSemanaJSON())}</pre>
-    <div class="muted" style="font-size:12px;margin-top:10px">
-      <strong>Regras:</strong><br>
-      • Dias dos treinos: você escolhe (ex: "Segunda", "Quinta", "Sábado")<br>
-      • <code>pace_alvo_central_segundos</code>: pace em segundos/km (ex: 7'15" = 435)<br>
-      • <code>estimativas_provas</code>: opcional. Match pelo nome para atualizar, ou <code>"nova": true</code> para criar
-    </div>
+    <h2>Guia para o coach</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:10px">Modelo em branco com as perguntas que o coach deve fazer. Copie e cole no chat do seu coach. Não contém nenhum dado pessoal.</p>
+    <pre style="background:var(--bg2);padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;font-family:monospace;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-word">${escapeHtml(guiaCoachTexto())}</pre>
     <div class="btn-row">
       <button class="btn outline" id="schemaClose">Fechar</button>
-      <button class="btn" id="schemaCopy">Copiar exemplo</button>
+      <button class="btn" id="schemaCopy">Copiar guia</button>
     </div>
   </div>`;
   document.body.appendChild(back);
   back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
   back.querySelector('#schemaClose').addEventListener('click', () => back.remove());
-  back.querySelector('#schemaCopy').addEventListener('click', (e) => { copiarTexto(exemploSemanaJSON(), e.currentTarget); toast('JSON copiado!'); });
+  back.querySelector('#schemaCopy').addEventListener('click', (e) => { copiarTexto(guiaCoachTexto(), e.currentTarget); toast('Guia copiado!'); });
 }
 
 function resetarApp() {
@@ -4733,14 +4762,12 @@ function openSettingsModal() {
       </div>
       <div class="sub" style="font-size:11px;color:var(--muted);margin-top:8px">A chave de API do Intervals.icu não é incluída no backup por segurança.</div>
     </div>
-    ${(() => {
-      const valido = validarSemanaImport(exemploSemanaImport()).ok && validarProtocoloJoelho(exemploSemanaImport().protocolo_joelho);
-      return `<div style="padding:14px 0;border-bottom:1px solid var(--border)">
-      <div class="label" style="font-size:14px;font-weight:600;margin-bottom:4px">JSON de exemplo para o coach</div>
-      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:10px">Formato aceito para importar uma semana. Copie e envie para o chat que vai gerar seu plano.</div>
-      <button class="btn" id="btnCopiarExemploJson" style="font-size:13px;padding:10px">📋 Copiar JSON</button>
+    <div style="padding:14px 0;border-bottom:1px solid var(--border)">
+      <div class="label" style="font-size:14px;font-weight:600;margin-bottom:4px">Guia para o coach</div>
+      <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:10px">Modelo em branco com as perguntas que o coach deve fazer (meta, corrida alvo, melhor tempo, dor no joelho). Copie e cole no chat do seu coach. Vem zerado, sem nenhum dado pessoal.</div>
+      <button class="btn" id="btnCopiarExemploJson" style="font-size:13px;padding:10px">📋 Copiar guia para o coach</button>
       <details style="margin-top:10px">
-        <summary style="font-size:12px;color:var(--muted);cursor:pointer">Ver JSON e campos</summary>
+        <summary style="font-size:12px;color:var(--muted);cursor:pointer">Ver guia e campos</summary>
         <div class="ex-json-body">
         <div class="sub" style="font-size:11px;color:var(--muted);margin:8px 0 10px;line-height:1.6">
           <strong>O que cada campo significa:</strong><br>
@@ -4750,15 +4777,14 @@ function openSettingsModal() {
           • <code>alerta_coach</code>: aviso importante, ou null.<br>
           • <code>treinos</code>: lista de treinos. Cada um com <code>dia</code>, <code>tipo</code>, <code>objetivo</code> e os blocos <code>rua</code> e <code>esteira</code>.<br>
           • Em <code>rua</code>/<code>esteira</code>: <code>aquecimento</code>, <code>principal</code>, <code>desaquecimento</code>, <code>duracao_total</code>, <code>distancia_km</code>, zonas <code>Z1</code> a <code>Z5</code> e <code>pace_alvo_central_segundos</code> (pace em segundos por km). Treino intervalado usa <code>intervalos</code> com <code>ciclos</code> e <code>fases</code>.<br>
+          • <code>prs_manuais</code>: melhores tempos já feitos, para virar recorde no app (ex: <code>{ "distancia_km": 5, "tempo": "30:00" }</code>). Opcional.<br>
           • <code>protocolo_joelho</code>: opcional. Fortalecimento com <code>dia</code> e <code>exercicios</code> (nome, series, reps, execucao).<br>
           • <code>estimativas_provas</code>: opcional. Provas alvo; <code>"nova": true</code> cria, ou casa pelo nome para atualizar.
         </div>
-        <span class="badge ${valido ? 'green' : 'red'}" style="margin-bottom:8px;display:inline-block">${valido ? '✓ válido para importação' : 'exemplo inválido'}</span>
-        <pre id="exemploJsonPre" style="background:var(--bg2);padding:12px;border-radius:8px;font-size:11px;max-height:220px;overflow:auto;font-family:monospace;line-height:1.5;color:var(--text);white-space:pre;margin:0">${escapeHtml(exemploSemanaJSON())}</pre>
+        <pre id="exemploJsonPre" style="background:var(--bg2);padding:12px;border-radius:8px;font-size:11px;max-height:240px;overflow:auto;font-family:monospace;line-height:1.5;color:var(--text);white-space:pre;margin:0">${escapeHtml(guiaCoachTexto())}</pre>
         </div>
       </details>
-    </div>`;
-    })()}
+    </div>
     <div class="settings-header">Sobre</div>
     <div class="setting-row">
       <div>
@@ -4785,7 +4811,7 @@ function openSettingsModal() {
   back.querySelector('#btnExportBackup').addEventListener('click', () => exportBackup());
   back.querySelector('#btnImportBackup').addEventListener('click', () => { back.remove(); importBackup(); });
   const btnCopiarEx = back.querySelector('#btnCopiarExemploJson');
-  if (btnCopiarEx) btnCopiarEx.addEventListener('click', (e) => { copiarTexto(exemploSemanaJSON(), e.currentTarget); toast('JSON copiado!'); });
+  if (btnCopiarEx) btnCopiarEx.addEventListener('click', (e) => { copiarTexto(guiaCoachTexto(), e.currentTarget); toast('Guia copiado!'); });
   back.querySelector('#setNome').addEventListener('change', (e) => {
     const cur = getSettings();
     setSettings({ ...cur, name: e.target.value.trim() });
