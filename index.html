@@ -431,16 +431,26 @@ function load(k, def) {
 }
 function save(k, v) { localStorage.setItem(k, JSON.stringify(v)); scheduleGistSync(); }
 const WEEK_DEFAULT = { semana_atual: 0, fase: '-', foco_da_semana: '', alerta_coach: null, treinos: [], observacao_coach: '' };
+// Normaliza um treino vindo de schema antigo/incompleto para um objeto seguro,
+// preservando o índice (usado por train_idx nos logs). Não altera o localStorage.
+function normalizarTreino(t) {
+  return (t && typeof t === 'object' && !Array.isArray(t)) ? t : { dia: '', tipo: '', status: 'Pendente' };
+}
 function getWeek() {
   try {
     const stored = localStorage.getItem(KEYS.week);
     if (!stored) return { ...WEEK_DEFAULT };
     const parsed = JSON.parse(stored);
-    if (!parsed || !Array.isArray(parsed.treinos)) {
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.treinos)) {
       console.error('runcoach_semana_atual com estrutura inválida, resetando');
       localStorage.removeItem(KEYS.week);
       return { ...WEEK_DEFAULT };
     }
+    // Blindagem contra schema antigo: garante campos base e treinos como objetos.
+    parsed.treinos = parsed.treinos.map(normalizarTreino);
+    if (parsed.semana_atual == null) parsed.semana_atual = 0;
+    if (parsed.fase == null) parsed.fase = '-';
+    if (parsed.foco_da_semana == null) parsed.foco_da_semana = '';
     return parsed;
   } catch (e) {
     console.error('Erro ao ler semana:', e);
@@ -615,12 +625,24 @@ document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', (
 function render() {
   updateProgressBar();
   const el = document.getElementById('content');
-  if (currentTab === 'home') el.innerHTML = renderHome();
-  else if (currentTab === 'semana') el.innerHTML = renderSemana();
-  else if (currentTab === 'historico') el.innerHTML = renderHistorico();
-  else if (currentTab === 'metricas') el.innerHTML = renderMetricas();
-  else if (currentTab === 'avaliacao') el.innerHTML = renderAvaliacao();
-  attachHandlers();
+  // Rede de segurança: uma exceção ao montar uma aba (ex: dados de schema antigo)
+  // nunca deve travar silenciosamente a navegação. Mostra recuperação amigável.
+  try {
+    if (currentTab === 'home') el.innerHTML = renderHome();
+    else if (currentTab === 'semana') el.innerHTML = renderSemana();
+    else if (currentTab === 'historico') el.innerHTML = renderHistorico();
+    else if (currentTab === 'metricas') el.innerHTML = renderMetricas();
+    else if (currentTab === 'avaliacao') el.innerHTML = renderAvaliacao();
+  } catch (e) {
+    console.error('Erro ao renderizar a aba "' + currentTab + '":', e);
+    el.innerHTML = `<div class="card alert-red" style="margin-top:20px">
+      <div style="font-weight:700;margin-bottom:6px">Não foi possível abrir esta aba</div>
+      <div style="font-size:13px;line-height:1.5;margin-bottom:12px">Os dados podem estar em um formato antigo ou incompleto. Importe uma semana no formato atual pelo botão abaixo, ou recarregue o app. Seus outros dados não foram apagados.</div>
+      <button class="btn" id="errImportarSemana" style="margin-bottom:8px">📥 Importar semana no formato atual</button>
+      <button class="btn outline" onclick="location.reload()">Recarregar app</button>
+    </div>`;
+  }
+  try { attachHandlers(); } catch (e) { console.error('Erro ao anexar handlers:', e); }
 }
 
 /* ========== TAB 0: HOME ========== */
@@ -937,7 +959,7 @@ function descartarTreinoAtivo() {
 
 function renderResumeBanner() {
   const saved = getActiveWorkout();
-  if (!saved) return '';
+  if (!saved || !Array.isArray(saved.fasesConfig)) return '';
   const f = saved.fasesConfig[saved.faseIdx];
   const elapsed = Math.floor((Date.now() - saved.workoutStart - saved.pausedAcc) / 1000);
   return `<div class="resume-banner" id="resumeBanner">
@@ -2853,6 +2875,8 @@ function attachHandlers() {
     }
     openImportarSemanaModal();
   });
+  const btnErrImp = document.getElementById('errImportarSemana');
+  if (btnErrImp) btnErrImp.addEventListener('click', openImportarSemanaModal);
   const btnProtCarrossel = document.getElementById('btnProtocoloCarrossel');
   if (btnProtCarrossel) btnProtCarrossel.addEventListener('click', openProtocoloCarrossel);
   const btnVerProtocolo = document.getElementById('btnVerProtocolo');
@@ -4190,8 +4214,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.5.1';
+const APP_VERSION = '4.5.2';
 const CHANGELOG = [
+  { v: '4.5.2', date: '2026-07-10', items: [
+    'Correção: importar uma semana em formato antigo não trava mais a navegação (Semana e Ver treino)',
+    'Blindagem contra dados de schema antigo, com recuperação amigável em vez de tela travada',
+  ]},
   { v: '4.5.1', date: '2026-07-10', items: [
     'Guia para o coach agora vem em branco (sem dados pessoais), com as perguntas a fazer ao novo usuário',
     'Importação aceita prs_manuais (melhores tempos) e já cria os recordes no app',
