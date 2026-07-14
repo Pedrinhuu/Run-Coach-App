@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.14-1321",
+  "versao": "2026.07.14-2134",
   "data": "2026-07-14",
-  "novidades": ["v4.5.4: Protocolo de joelho respeita protocolo_joelho null (não mostra card alheio)"]
+  "novidades": ["chore: remove referência morta a runcoach_anthropic_key"]
 }
