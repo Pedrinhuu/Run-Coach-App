@@ -1162,7 +1162,7 @@ function renderTreinosSubTab() {
       const r = item.reg;
       const d = new Date(item.data + 'T12:00:00');
       const dia = DIAS_NOMES[d.getDay()];
-      const nEx = r.exercicios != null ? r.exercicios : (getProtocoloJoelho().exercicios || []).length;
+      const nEx = r.exercicios != null ? r.exercicios : (getProtocoloJoelho()?.exercicios || []).length;
       html += `<div class="history-item">
         <div class="meta"><strong>${fmtDateBR(item.data)} · ${dia}</strong></div>
         <div class="muted" style="font-size:13px">Protocolo de Fortalecimento do Joelho</div>
@@ -1673,21 +1673,24 @@ function renderMetricas() {
     </div>`;
   }
 
-  const protStatus = getProtocoloStatus();
-  const semanaAtualMonday = mondayISOOf(todayISO());
-  const concluiuEstaSemana = protStatus.some(r => r.concluido && mondayISOOf(r.data) === semanaAtualMonday);
-  const streakProt = calcProtocoloStreak();
-  html += `<div class="card" style="position:relative">
-    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Fortalecimento do Joelho</div>
-    <div class="row between" style="font-size:13px;padding:4px 0">
-      <span>Esta semana</span>
-      <span class="num" style="color:${concluiuEstaSemana ? 'var(--green)' : 'var(--muted)'};font-weight:600">${concluiuEstaSemana ? 'Concluído' : 'Pendente'}</span>
-    </div>
-    <div class="row between" style="font-size:13px;padding:4px 0">
-      <span>Streak semanal</span>
-      <span class="num" style="font-weight:600">${streakProt} semana${streakProt !== 1 ? 's' : ''}</span>
-    </div>
-  </div>`;
+  // Card de fortalecimento só aparece se a semana atual tem protocolo.
+  if (getProtocoloJoelho()) {
+    const protStatus = getProtocoloStatus();
+    const semanaAtualMonday = mondayISOOf(todayISO());
+    const concluiuEstaSemana = protStatus.some(r => r.concluido && mondayISOOf(r.data) === semanaAtualMonday);
+    const streakProt = calcProtocoloStreak();
+    html += `<div class="card" style="position:relative">
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">Fortalecimento do Joelho</div>
+      <div class="row between" style="font-size:13px;padding:4px 0">
+        <span>Esta semana</span>
+        <span class="num" style="color:${concluiuEstaSemana ? 'var(--green)' : 'var(--muted)'};font-weight:600">${concluiuEstaSemana ? 'Concluído' : 'Pendente'}</span>
+      </div>
+      <div class="row between" style="font-size:13px;padding:4px 0">
+        <span>Streak semanal</span>
+        <span class="num" style="font-weight:600">${streakProt} semana${streakProt !== 1 ? 's' : ''}</span>
+      </div>
+    </div>`;
+  }
 
   return html;
 }
@@ -1801,6 +1804,9 @@ const PROTOCOLO_JOELHO_DEFAULT = {
 };
 
 function getProtocoloJoelho() {
+  // Retorna o protocolo salvo, ou null se a semana atual não tem protocolo.
+  // Não usa default hardcoded: protocolo só existe se foi importado (evita
+  // mostrar o protocolo de uma pessoa para outra que não tem o campo).
   try {
     const raw = localStorage.getItem(PROTOCOLO_JOELHO_KEY);
     if (raw) {
@@ -1808,7 +1814,7 @@ function getProtocoloJoelho() {
       if (p && Array.isArray(p.exercicios) && p.exercicios.length > 0) return p;
     }
   } catch {}
-  return PROTOCOLO_JOELHO_DEFAULT;
+  return null;
 }
 
 function validarProtocoloJoelho(pj) {
@@ -1884,7 +1890,9 @@ function calcProtocoloStreak() {
 }
 
 function openProtocoloCarrossel() {
-  const exs = getProtocoloJoelho().exercicios;
+  const pj = getProtocoloJoelho();
+  if (!pj || !Array.isArray(pj.exercicios) || pj.exercicios.length === 0) return;
+  const exs = pj.exercicios;
   let idx = parseInt(localStorage.getItem(PROTOCOLO_POS_KEY)) || 0;
   if (idx < 0 || idx >= exs.length) idx = 0;
 
@@ -3475,6 +3483,10 @@ function previewSemana(back) {
         } else {
           protErro = true;
         }
+      } else {
+        // protocolo_joelho null ou ausente = esta semana não tem protocolo.
+        // Remove o protocolo salvo para não persistir de um import anterior.
+        localStorage.removeItem(PROTOCOLO_JOELHO_KEY);
       }
 
       // PRs manuais (melhores tempos informados) viram recorde no app, como piso de comparação.
@@ -4253,8 +4265,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.5.3';
+const APP_VERSION = '4.5.4';
 const CHANGELOG = [
+  { v: '4.5.4', date: '2026-07-10', items: [
+    'Protocolo de joelho só aparece se a semana importada tiver o campo; protocolo_joelho null deixa de mostrar o card',
+  ]},
   { v: '4.5.3', date: '2026-07-10', items: [
     'Correção: data de prova inválida não trava mais o "Confirmar e salvar" (erro Invalid time value)',
     'Datas em DD/MM/AAAA são normalizadas; datas não interpretáveis são ignoradas com aviso',
