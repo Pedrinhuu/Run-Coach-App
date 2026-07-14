@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.13-1837",
-  "data": "2026-07-13",
-  "novidades": ["v4.5.3: Data de prova inválida não trava mais o import (Invalid time value)"]
+  "versao": "2026.07.14-1321",
+  "data": "2026-07-14",
+  "novidades": ["v4.5.4: Protocolo de joelho respeita protocolo_joelho null (não mostra card alheio)"]
 }
