@@ -4665,7 +4665,10 @@ function backupKeys() {
     PROTOCOLO_JOELHO_KEY, PROTOCOLO_STATUS_KEY, PRS_MANUAIS_KEY
   ];
 }
-const BACKUP_EXCLUDE_KEYS = ['runcoach_intervals_key', GITHUB_TOKEN_KEY, GITHUB_GIST_ID_KEY, GITHUB_SYNC_META_KEY, 'runcoach_anthropic_key'];
+// Chaves nunca incluídas no backup/export. Lista apenas credenciais que o app
+// realmente armazena: Intervals.icu e GitHub. Não adicionar chaves especulativas
+// aqui, para não sugerir que o app guarda credenciais que ele não guarda.
+const BACKUP_EXCLUDE_KEYS = ['runcoach_intervals_key', GITHUB_TOKEN_KEY, GITHUB_GIST_ID_KEY, GITHUB_SYNC_META_KEY];
 
 function buildBackupObject() {
   const data = {};
