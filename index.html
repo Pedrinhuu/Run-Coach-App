@@ -821,7 +821,9 @@ function dataDoTreino(diaNome) {
   // Data do treino na semana atual (Segunda a Domingo), calculada 100% em UTC,
   // consistente com mondayISOOf. Evita o offset de +1 dia no fuso UTC-3.
   const mondayDate = new Date(mondayISOOf(todayISO()) + 'T00:00:00Z');
-  const offsetDia = DIAS_SEMANA_GLOBAL.indexOf(diaNome) - 1; // Segunda (índice 1) = offset 0
+  const i = DIAS_SEMANA_GLOBAL.indexOf(diaNome);
+  // Segunda (índice 1) = offset 0 ... Sábado = 5; Domingo (índice 0) fecha a semana = 6.
+  const offsetDia = i === 0 ? 6 : i - 1;
   mondayDate.setUTCDate(mondayDate.getUTCDate() + Math.max(0, offsetDia));
   return mondayDate.toISOString().split('T')[0];
 }
@@ -1341,7 +1343,8 @@ function renderCorridasSubTab() {
       ${res.observacao ? `<div class="muted" style="font-size:12px;font-style:italic;margin-top:8px">"${escapeHtml(res.observacao)}"</div>` : ''}`;
     } else {
       corpo = r.time_estimate ? `<div class="row" style="gap:6px;margin-top:6px;font-size:13px;align-items:center"><span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Tempo estimado</span><span class="num" style="font-weight:700;color:var(--accent)">${escapeHtml(r.time_estimate)}</span>${r.estimate_pace ? `<span class="muted" style="font-size:12px">· pace ${escapeHtml(r.estimate_pace)}</span>` : ''}</div>` : '';
-      if (isPast) {
+      if (dataOk && dataOk <= today) {
+        // Inclui o próprio dia da prova: dá para registrar assim que terminar de correr.
         corpo += `<button class="btn" data-action="register-result" data-id="${r.id}" style="margin-top:10px">Registrar resultado</button>`;
       }
     }
@@ -2598,7 +2601,7 @@ function openRaceModal(existingId) {
     </div>
     <div class="field"><label>Tempo estimado <span class="muted" style="text-transform:none;letter-spacing:0">(opcional — pedir ao coach)</span></label>${pickerInputHtml('rTime', def.time_estimate || '', "selecionar tempo")}</div>
     <div class="field"><label>Pace estimado <span class="muted" style="text-transform:none;letter-spacing:0">(opcional)</span></label>${pickerInputHtml('rPace', def.estimate_pace || '', "ex: 5'59\"/km")}</div>
-    ${(isEdit && (existing.date < todayISO() || existing.resultado)) ? `<div class="field"><button class="btn outline" id="btnEditResult" type="button">${existing.resultado ? 'Editar resultado da prova' : 'Registrar resultado da prova'}</button></div>` : ''}
+    ${(isEdit && (existing.resultado || (parseDataSegura(existing.date) && parseDataSegura(existing.date) <= todayISO()))) ? `<div class="field"><label>Resultado real</label><button class="btn outline" id="btnEditResult" type="button">${existing.resultado ? `🏁 ${escapeHtml(existing.resultado.tempo || '')} · Editar resultado` : '🏁 Registrar resultado da prova'}</button></div>` : ''}
     <div class="btn-row">
       <button class="btn outline" id="raceCancel">Cancelar</button>
       <button class="btn" id="raceSave">Salvar</button>
@@ -2712,6 +2715,90 @@ function openTempoRaceResultPicker(currentSec, comHoras, onConfirm) {
   }
 }
 
+/* ========== VÍNCULO TREINO DE PROVA x CORRIDA CADASTRADA ========== */
+// Critério de match (documentado): mesma DATA, normalizada por parseDataSegura
+// (evita bug de fuso/+1 dia). Se houver mais de uma corrida na mesma data,
+// desempata pela mesma distância (arredondada a 1 casa). Sem corrida na data,
+// não há vínculo e o registro segue normal, sem travar.
+function encontrarCorridaDaProva(dataISO, distKm) {
+  const alvo = parseDataSegura(dataISO);
+  if (!alvo) return null;
+  const mesmas = getRaces().filter(r => parseDataSegura(r.date) === alvo);
+  if (mesmas.length === 0) return null;
+  if (distKm) {
+    const d = Math.round(distKm * 10) / 10;
+    const porDist = mesmas.find(r => { const km = raceDistanceKm(r); return km != null && Math.round(km * 10) / 10 === d; });
+    if (porDist) return porDist;
+  }
+  return mesmas[0];
+}
+
+// Fonte única do resultado da prova: corrida.resultado em runcoach_corridas.
+// Os dois caminhos (treino de Prova e card da corrida) escrevem por aqui.
+// O PR é checado ANTES de gravar, com comparação estritamente menor: gravar o
+// mesmo tempo de novo, por qualquer caminho, não gera novo PR nem animação.
+function registrarResultadoNaCorrida(raceId, tempoSeg, obs) {
+  const all = getRaces();
+  const i = all.findIndex(x => x.id === raceId);
+  if (i < 0 || !tempoSeg) return { gravado: false, novoPR: false };
+  const km = raceDistanceKm(all[i]);
+  const dist = km != null ? Math.round(km * 10) / 10 : null;
+  const prAntes = dist != null ? calcularPRs(all)[dist] : null;
+  const novoPR = dist != null && (!prAntes || tempoSeg < prAntes.tempo_segundos);
+  const resAnterior = all[i].resultado || {};
+  all[i] = { ...all[i], resultado: {
+    tempo: fmtTempoInput(tempoSeg),
+    tempo_segundos: tempoSeg,
+    pace: paceResultado(tempoSeg, km) || null,
+    observacao: (obs != null && obs !== '') ? obs : (resAnterior.observacao || null),
+    registrado_em: todayISO()
+  } };
+  setRaces(all);
+  return { gravado: true, novoPR, dist, km };
+}
+
+// Caminho card -> treino: com resultado salvo na corrida, marca o treino de
+// Prova correspondente da semana como Concluído e cria o log se não existir
+// (sem log, sincronizarStatusTreinos voltaria o status para Pendente).
+function sincronizarTreinoProvaComCorrida(raceId) {
+  const r = getRaces().find(x => x.id === raceId);
+  if (!r || !r.resultado || !r.resultado.tempo_segundos) return;
+  const dataProva = parseDataSegura(r.date);
+  const w = getWeek();
+  if (!Array.isArray(w.treinos) || w.treinos.length === 0) return;
+  const provas = w.treinos.map((t, idx) => ({ t, idx })).filter(({ t }) => /prova/i.test(t.tipo || ''));
+  if (provas.length === 0) return;
+  let alvo = dataProva ? provas.find(({ t }) => dataDoTreino(t.dia) === dataProva) : null;
+  if (!alvo && provas.length === 1 && dataProva) {
+    const { inicio, fim } = intervaloSemanaAtual();
+    if (dataProva >= inicio && dataProva <= fim) alvo = provas[0];
+  }
+  if (!alvo) return;
+  const { t, idx } = alvo;
+  if (t.status !== 'Concluído') {
+    t.status = 'Concluído';
+    t.data_efetiva = dataProva || todayISO();
+    setWeek(w);
+  }
+  const logs = getLogs();
+  if (!logs.some(l => l.semana === w.semana_atual && l.train_idx === idx)) {
+    const seg = r.resultado.tempo_segundos;
+    const km = raceDistanceKm(r);
+    const paceSeg = (km && km > 0) ? Math.round(seg / km) : null;
+    const paceAlvo = (t.rua && t.rua.pace_alvo_central_segundos) || null;
+    logs.push({
+      data: dataProva || todayISO(), dia: t.dia, tipo: t.tipo, modo: 'Rua',
+      pace_real: paceSeg ? fmtPace(paceSeg) : null, pace_alvo_segundos: paceAlvo,
+      desvio_pace: (paceSeg != null && paceAlvo != null) ? paceSeg - paceAlvo : null,
+      distancia: km || null, tempo_segundos: seg,
+      joelho: 'sem dor', seguiu_parametros: true, motivo_desvio: null,
+      observacoes: r.resultado.observacao || null,
+      semana: w.semana_atual, train_idx: idx, ts: Date.now()
+    });
+    setLogs(logs);
+  }
+}
+
 function openRegistrarResultadoModal(id) {
   const r = getRaces().find(x => x.id === id);
   if (!r) return;
@@ -2756,30 +2843,17 @@ function openRegistrarResultadoModal(id) {
     const seg = parseInt(resTempo.dataset.value) || null;
     if (!seg) { alert('Informe o tempo real'); return; }
     const obs = back.querySelector('#resObs').value.trim();
-    const all = getRaces();
-    const i = all.findIndex(x => x.id === id);
-    if (i >= 0) {
-      // PR atual a bater (manual ou de outra corrida), antes de salvar este resultado.
-      const dist = km != null ? Math.round(km * 10) / 10 : null;
-      const prAntes = dist != null ? calcularPRs(getRaces())[dist] : null;
-      const novoPR = dist != null && (!prAntes || seg < prAntes.tempo_segundos);
-
-      all[i] = { ...all[i], resultado: {
-        tempo: fmtTempoInput(seg),
-        tempo_segundos: seg,
-        pace: paceResultado(seg, km) || null,
-        observacao: obs || null,
-        registrado_em: todayISO()
-      } };
-      setRaces(all);
-      back.remove();
-      render();
-      if (novoPR) {
-        const distLabel = (dist % 1 === 0 ? String(dist) : String(dist)) + 'K';
-        celebrarNovoPR(`${distLabel} em ${fmtTempoInput(seg)}`);
-      } else {
-        toast('Resultado registrado', 'success');
-      }
+    const out = registrarResultadoNaCorrida(id, seg, obs || null);
+    if (!out.gravado) return;
+    // Reflete no treino de Prova da semana (status Concluído + log), se houver vínculo.
+    sincronizarTreinoProvaComCorrida(id);
+    back.remove();
+    render();
+    if (out.novoPR) {
+      const distLabel = (out.dist % 1 === 0 ? String(out.dist) : String(out.dist)) + 'K';
+      celebrarNovoPR(`${distLabel} em ${fmtTempoInput(seg)}`);
+    } else {
+      toast('Resultado registrado', 'success');
     }
   });
 }
@@ -3179,6 +3253,23 @@ function openLogModal(idx, existingLog) {
     }
     back.remove();
     render();
+    // Treino de Prova: alimenta o resultado real da corrida cadastrada vinculada
+    // (fonte única em runcoach_corridas) e checa PR com a animação existente.
+    if (selSemana === 'atual' && /prova/i.test(t.tipo || '')) {
+      const segReal = tempoSeg || ((paceSeg && dist) ? Math.round(paceSeg * dist) : null);
+      if (segReal) {
+        const corrida = encontrarCorridaDaProva(data, dist || getDistanciaKm(t, (modo || 'rua').toLowerCase()));
+        if (corrida) {
+          const out = registrarResultadoNaCorrida(corrida.id, segReal, obs || null);
+          if (out.gravado && out.novoPR) {
+            const distLabel = (out.dist % 1 === 0 ? String(out.dist) : String(out.dist)) + 'K';
+            celebrarNovoPR(`${distLabel} em ${fmtTempoInput(segReal)}`);
+          } else if (out.gravado) {
+            setTimeout(() => toast(`Resultado salvo em "${corrida.name}"`, 'success'), 400);
+          }
+        }
+      }
+    }
     openPSEModal(log.ts, selSemana);
   });
 }
@@ -4265,8 +4356,14 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.5.4';
+const APP_VERSION = '4.6.0';
 const CHANGELOG = [
+  { v: '4.6.0', date: '2026-07-19', items: [
+    'Treino de Prova vinculado à corrida cadastrada: registrar por um caminho reflete no outro',
+    'Registrar a prova (pelo treino ou pelo card) checa recorde e dispara a animação de PR',
+    'Botão Registrar resultado disponível já no dia da prova, não só depois',
+    'Correção: data sugerida para treino de Domingo apontava para a segunda-feira',
+  ]},
   { v: '4.5.4', date: '2026-07-10', items: [
     'Protocolo de joelho só aparece se a semana importada tiver o campo; protocolo_joelho null deixa de mostrar o card',
   ]},
