@@ -1870,8 +1870,19 @@ function weekHasProtocolo(w) {
 }
 
 function registroProtocoloSemanaAtual() {
+  // "Concluído nesta semana" é relativo à semana do PLANO, não à de calendário:
+  // importar uma semana nova no meio da semana de calendário (ex: domingo) não
+  // pode herdar a conclusão do protocolo da semana anterior do plano.
+  const w = getWeek();
   const semMonday = mondayISOOf(todayISO());
-  return getProtocoloStatus().find(r => r.concluido && mondayISOOf(r.data) === semMonday) || null;
+  return getProtocoloStatus().find(r => {
+    if (!r.concluido) return false;
+    if (r.semana != null) return r.semana === w.semana_atual;
+    // Registros antigos sem número de semana: mesma semana de calendário e
+    // nunca anteriores à importação da semana atual do plano.
+    if (mondayISOOf(r.data) !== semMonday) return false;
+    return !w.importada_em || r.data >= w.importada_em;
+  }) || null;
 }
 
 function protocoloConcluidoNaSemanaAtual() {
@@ -1944,7 +1955,7 @@ function openProtocoloCarrossel() {
     if (isLast) {
       overlay.querySelector('#poConcluir').addEventListener('click', () => {
         const status = getProtocoloStatus();
-        status.push({ data: new Date().toISOString().split('T')[0], concluido: true, exercicios: exs.length });
+        status.push({ data: new Date().toISOString().split('T')[0], concluido: true, exercicios: exs.length, semana: getWeek().semana_atual });
         localStorage.setItem(PROTOCOLO_STATUS_KEY, JSON.stringify(status));
         localStorage.setItem(PROTOCOLO_POS_KEY, '0');
         scheduleGistSync();
@@ -3553,14 +3564,23 @@ function previewSemana(back) {
         setWeek(w);
         const hist = getHistory(); hist.push(getWeek()); setHistory(hist);
       }
-      const treinosComStatus = nextWeek.treinos.map(t => ({ ...t, status: 'Pendente', data_prevista: null }));
+      // Reconciliação do protocolo de joelho: o coach pode mandá-lo como campo
+      // protocolo_joelho, como treino tipo "Protocolo..." na lista treinos, ou
+      // nos DOIS ao mesmo tempo. Regra (documentada): o campo protocolo_joelho
+      // é a fonte de verdade do CONTEÚDO (exercícios etc); entradas na lista só
+      // informam o dia e são removidas dos treinos, para não virar treino
+      // fantasma nem atividade duplicada. Uma única atividade de protocolo.
+      const ehEntradaProtocolo = (t) => !!t && /protocolo|fortalecimento/i.test(String(t.tipo || ''));
+      const entradaProt = (nextWeek.treinos || []).find(ehEntradaProtocolo) || null;
+      const treinosComStatus = nextWeek.treinos.filter(t => !ehEntradaProtocolo(t)).map(t => ({ ...t, status: 'Pendente', data_prevista: null }));
       setWeek({
         semana_atual: nextWeek.semana || (temSemanaExistente ? w.semana_atual + 1 : 1),
         fase: nextWeek.fase || w.fase || '-',
         foco_da_semana: nextWeek.foco_da_semana || '',
         alerta_coach: nextWeek.alerta_coach || null,
         treinos: treinosComStatus,
-        observacao_coach: nextWeek.observacao_coach || ''
+        observacao_coach: nextWeek.observacao_coach || '',
+        importada_em: todayISO()
       });
 
       const resumo = aplicarEstimativasProvas(nextWeek.estimativas_provas);
@@ -3569,14 +3589,22 @@ function previewSemana(back) {
       let protErro = false;
       if (nextWeek.protocolo_joelho) {
         if (validarProtocoloJoelho(nextWeek.protocolo_joelho)) {
-          localStorage.setItem(PROTOCOLO_JOELHO_KEY, JSON.stringify(nextWeek.protocolo_joelho));
+          const pjNovo = { ...nextWeek.protocolo_joelho };
+          if (!pjNovo.dia && entradaProt && entradaProt.dia) pjNovo.dia = entradaProt.dia;
+          localStorage.setItem(PROTOCOLO_JOELHO_KEY, JSON.stringify(pjNovo));
           protImportado = true;
         } else {
           protErro = true;
         }
+      } else if (entradaProt) {
+        // Protocolo veio APENAS como treino na lista: mantém o conteúdo já salvo
+        // (ou o padrão) e usa o dia informado na entrada.
+        const base = getProtocoloJoelho() || PROTOCOLO_JOELHO_DEFAULT;
+        localStorage.setItem(PROTOCOLO_JOELHO_KEY, JSON.stringify({ ...base, dia: entradaProt.dia || base.dia }));
+        protImportado = true;
       } else {
-        // protocolo_joelho null ou ausente = esta semana não tem protocolo.
-        // Remove o protocolo salvo para não persistir de um import anterior.
+        // protocolo_joelho null ou ausente e sem entrada na lista = esta semana
+        // não tem protocolo. Remove o salvo para não persistir de import anterior.
         localStorage.removeItem(PROTOCOLO_JOELHO_KEY);
       }
 
@@ -4356,8 +4384,13 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.6.0';
+const APP_VERSION = '4.6.1';
 const CHANGELOG = [
+  { v: '4.6.1', date: '2026-07-19', items: [
+    'Protocolo no JSON em dois lugares (campo e treino na lista) vira uma única atividade, sem duplicar',
+    'Importar semana nova no meio da semana não herda mais a conclusão do protocolo da semana anterior',
+    'Protocolo só como treino na lista também é reconhecido como atividade',
+  ]},
   { v: '4.6.0', date: '2026-07-19', items: [
     'Treino de Prova vinculado à corrida cadastrada: registrar por um caminho reflete no outro',
     'Registrar a prova (pelo treino ou pelo card) checa recorde e dispara a animação de PR',
