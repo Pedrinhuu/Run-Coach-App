@@ -4384,8 +4384,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.6.1';
+const APP_VERSION = '4.6.2';
 const CHANGELOG = [
+  { v: '4.6.2', date: '2026-07-20', items: [
+    'Guia para o coach atualizado: protocolo só no campo, datas AAAA-MM-DD, vínculo de prova e PR manual',
+  ]},
   { v: '4.6.1', date: '2026-07-19', items: [
     'Protocolo no JSON em dois lugares (campo e treino na lista) vira uma única atividade, sem duplicar',
     'Importar semana nova no meio da semana não herda mais a conclusão do protocolo da semana anterior',
@@ -4714,10 +4717,10 @@ function templateSemanaImport() {
     alerta_coach: null,
     observacao_coach: "",
     prs_manuais: [
-      { distancia_km: 0, tempo: "" }
+      { distancia_km: 0, tempo: "MM:SS" }
     ],
     estimativas_provas: [
-      { nome: "", data: "", distancia: "", tempo_estimado: "", pace_estimado: "", nova: true }
+      { nome: "", data: "AAAA-MM-DD", distancia: "", tempo_estimado: "", pace_estimado: "", nova: true }
     ],
     treinos: [
       {
@@ -4726,6 +4729,13 @@ function templateSemanaImport() {
         objetivo: "",
         rua: { aquecimento: "", principal: "", desaquecimento: "", duracao_total: "", distancia_km: 0, pace_alvo_central_segundos: 0 },
         esteira: { aquecimento: "", principal: "", desaquecimento: "", duracao_total: "", distancia_km: 0 }
+      },
+      {
+        dia: "",
+        tipo: "Prova",
+        objetivo: "",
+        rua: { aquecimento: "", principal: "", desaquecimento: "", duracao_total: "", distancia_km: 0, pace_alvo_central_segundos: 0 },
+        esteira: null
       }
     ],
     protocolo_joelho: null
@@ -4750,13 +4760,16 @@ function guiaCoachTexto() {
     '',
     modelo,
     '',
-    'Regras:',
+    'Regras de formato (o app depende delas, siga à risca):',
     '- "treinos": uma entrada por dia de treino, com "dia" (Segunda a Domingo), "tipo", "objetivo" e os blocos "rua" e "esteira".',
     '- "pace_alvo_central_segundos": pace em segundos por km (ex: 7\'30" = 450).',
     '- Treino intervalado usa "intervalos" com "ciclos" e "fases".',
-    '- "prs_manuais": melhores tempos que eu já tenho, no formato { "distancia_km": 5, "tempo": "30:00" }. Se não houver, use [].',
+    '- DATAS: sempre no formato AAAA-MM-DD (ex: "2026-08-10"). Nunca ano solto ("2027") nem DD/MM/AAAA. Se não souber a data de uma prova, é melhor omitir a prova do que mandar data incompleta.',
+    '- PROTOCOLO DE JOELHO: envie SOMENTE no campo de nível superior "protocolo_joelho", NUNCA como uma entrada de treino na lista "treinos". Use "protocolo_joelho": null quando não houver dor ou lesão no joelho. Quando houver, preencha os exercícios (o app não preenche sozinho; se vier vazio, o card não aparece), neste formato:',
+    '  "protocolo_joelho": { "dia": "Terça", "nome": "Protocolo de Fortalecimento do Joelho", "duracao_estimada": "45 a 55 min", "exercicios": [ { "nome": "Ponte glútea", "series": 3, "reps": 15, "descanso_segundos": 60, "execucao": ["passo 1", "passo 2"], "carga": "leve" } ] }',
+    '- SEMANA COM PROVA: para o app vincular a prova ao treino e checar recorde sozinho, crie a corrida em "estimativas_provas" E um treino "tipo": "Prova" no MESMO dia e com a MESMA distância. A "data" da prova (AAAA-MM-DD) deve ser o dia real em que esse treino Prova cai na semana, e o "distancia_km" do treino deve bater com a "distancia" da prova. Se a semana não tiver prova, remova a entrada de treino "Prova" do modelo.',
+    '- "prs_manuais": se eu já tenho um recorde antigo, inclua no formato { "distancia_km": 5, "tempo": "MM:SS" } (ex: 5K em "29:00"). Se não houver, use [].',
     '- "estimativas_provas": corrida(s) alvo. Se não houver, use [].',
-    '- "protocolo_joelho": só se houver dor/lesão; senão use null.',
     '- Devolva apenas o JSON preenchido, sem texto ao redor.'
   ].join('\n');
 }
