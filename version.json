@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.19-1528",
-  "data": "2026-07-19",
-  "novidades": ["v4.6.0: Treino de Prova vinculado à corrida cadastrada, com PR pelos dois caminhos"]
+  "versao": "2026.07.20-1317",
+  "data": "2026-07-20",
+  "novidades": ["v4.6.1: Protocolo duplicado no JSON reconciliado e sem conclusão herdada"]
 }
