@@ -307,115 +307,11 @@
 
 <script>
 /* ========== CONSTANTS ========== */
-const RACES_DEFAULT = [
-  { id: 'r1', name: "Blue Run 5K", date: "2026-07-05", distance: "5K" },
-  { id: 'r2', name: "Corrida Vera Cruz 15K", date: "2026-12-31", distance: "15K" },
-  { id: 'r3', name: "Half Marathon 21K", date: "2027-06-06", distance: "21K" }
-];
+// Sem seed de corridas: instalação nova começa sem nenhuma corrida cadastrada
+// (não semear dados pessoais de outra pessoa). Corridas já salvas são preservadas.
 const PLAN_START = "2026-06-14";
 const PLAN_END = "2027-06-06";
 const TOTAL_WEEKS = Math.ceil((new Date(PLAN_END) - new Date(PLAN_START)) / (1000*60*60*24*7));
-
-const SYSTEM_PROMPT = `Você é um coach de corrida especializado em periodização para atletas amadores. Seu atleta é Pedro, 36 anos, Rio de Janeiro.
-
-PERFIL DO ATLETA:
-- Objetivo: completar 21km em junho/2027
-- PR de 5K: 29'56" (pace ~5'59"/km) em maio/2026
-- Nível atual: iniciante em corrida específica, boa base cardiovascular de HYROX
-- Restrição médica CRÍTICA: joelho direito com cirurgia de LCA + menisco (~2012). Dor leve = monitorar. Dor moderada = reduzir impacto imediatamente, sem progressão nessa semana.
-- Treinos paralelos: musculação (seg/qui), HYROX conditioning (ter/qua/sex)
-- Dias de corrida disponíveis: segunda, quinta, sábado
-- Pode correr na rua ou na esteira
-
-CALENDÁRIO DE CORRIDAS:
-- 05/jul/2026 - Blue Run 5K
-- 31/dez/2026 - Corrida Vera Cruz 15K
-- 06/jun/2027 - Half Marathon 21K
-
-PERIODIZAÇÃO MACRO:
-- Fase Base (jun-ago/2026): adaptação aeróbica, volume baixo, joelho prioritário
-- Fase Desenvolvimento (set-nov/2026): aumento progressivo de distância, introdução de ritmo
-- Fase Específica (dez/2026-mar/2027): treinos longos, simular distâncias de prova
-- Fase Pico + Taper (abr-jun/2027): refinar pace, reduzir volume, chegar fresco
-
-REGRAS DE PROGRESSÃO:
-- Volume máximo: +10% por semana
-- Se sensação média >= 4 em 3 treinos consecutivos: manter volume, não progredir
-- Se dor moderada no joelho em 2+ sessões: reduzir volume 20% e eliminar qualquer treino de tiro/intervalado
-- Semanas de recuperação a cada 4 semanas (reduzir volume ~30%)
-- Nas 2 semanas antes de cada corrida de prova: reduzir volume (taper)
-
-REGRAS DE FLEXIBILIDADE:
-- Treinos perdidos podem ser realocados para outro dia da semana se houver espaço
-- Se a semana fechou com apenas 1 treino concluído: não progredir, repetir foco da semana
-- Se a semana fechou com 2 treinos: progressão normal mas com cautela
-- Se a semana fechou com 3 treinos: progressão normal
-
-ANÁLISE DE DESVIO DE PACE:
-- Se pace real consistentemente mais lento que alvo (>45s): verificar se é esforço ou condição externa (calor, terreno). Pode ajustar faixa alvo.
-- Se pace real consistentemente mais rápido que alvo (>45s): alertar que está correndo rápido demais para a fase, ajustar faixa alvo para cima mas orientar sobre controle.
-
-FORMATO DE RESPOSTA (JSON puro, sem markdown, sem texto fora do JSON):
-{
-  "semana": <número inteiro>,
-  "fase": "<nome da fase>",
-  "foco_da_semana": "<frase curta descrevendo o objetivo da semana>",
-  "alerta_coach": "<null ou mensagem de alerta se houver gatilho ativo>",
-  "treinos": [
-    {
-      "dia": "Segunda",
-      "tipo": "<nome do treino>",
-      "objetivo": "<objetivo em 1 frase>",
-      "rua": {
-        "aquecimento": "<instrução>",
-        "principal": "<instrução detalhada com pace alvo ex: 7'30\\"/km - 8'00\\"/km>",
-        "desaquecimento": "<instrução>",
-        "duracao_total": "<ex: 30 min>",
-        "pace_alvo_central_segundos": <número>
-      },
-      "esteira": {
-        "aquecimento": "<instrução com velocidade em km/h>",
-        "principal": "<instrução detalhada com velocidade em km/h>",
-        "desaquecimento": "<instrução com velocidade em km/h>",
-        "duracao_total": "<ex: 30 min>"
-      }
-    },
-    { "dia": "Quinta", "...": "..." },
-    { "dia": "Sábado", "...": "..." }
-  ],
-  "observacao_coach": "<orientação importante da semana, máximo 2 frases>"
-}`;
-
-const INITIAL_WEEK = {
-  semana_atual: 1,
-  fase: "Base",
-  foco_da_semana: "Adaptação aeróbica - volume baixo, ritmo confortável",
-  alerta_coach: null,
-  treinos: [
-    {
-      dia: "Segunda", tipo: "Corrida Contínua Leve", distancia_km: 4.2,
-      objetivo: "Ativar sem agredir. Primeira corrida com volume controlado.",
-      status: "Pendente", data_prevista: null,
-      rua: { aquecimento: "5 min caminhada", zona_aquecimento: "Z1", principal: "20 min corrida contínua em pace 7'30\"/km - 8'00\"/km. Ritmo onde consegue falar frases completas sem ofegar.", zona_principal: "Z2", desaquecimento: "5 min caminhada", zona_desaquecimento: "Z1", duracao_total: "30 min", distancia_km: 4.2, pace_alvo_central_segundos: 465 },
-      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", zona_aquecimento: "Z1", principal: "20 min a 7,0-7,5 km/h", zona_principal: "Z2", desaquecimento: "5 min caminhada a 5,0 km/h", zona_desaquecimento: "Z1", duracao_total: "30 min", distancia_km: 4.2 }
-    },
-    {
-      dia: "Quinta", tipo: "Fartlek Simples", distancia_km: 5.2,
-      objetivo: "Introduzir variação de esforço sem intervalado clássico.",
-      status: "Pendente", data_prevista: null,
-      rua: { aquecimento: "5 min caminhada", zona_aquecimento: "Z1", principal: "20 min alternando: 2 min em pace 7'30\"/km - 8'00\"/km + 1 min em pace 6'30\"/km - 6'45\"/km. Repetir o ciclo (~6-7x).", zona_principal: "Z3", desaquecimento: "5 min caminhada", zona_desaquecimento: "Z1", duracao_total: "30 min", distancia_km: 5.2, pace_alvo_central_segundos: 435 },
-      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", zona_aquecimento: "Z1", principal: "20 min alternando: 2 min a 7,0 km/h + 1 min a 8,5 km/h. Repetir o ciclo.", zona_principal: "Z3", desaquecimento: "5 min caminhada a 5,0 km/h", zona_desaquecimento: "Z1", duracao_total: "30 min", distancia_km: 5.2 }
-    },
-    {
-      dia: "Sábado", tipo: "Longão Z2", distancia_km: 6.0,
-      objetivo: "Construir base aeróbica. Treino mais importante da semana.",
-      status: "Pendente", data_prevista: null,
-      rua: { aquecimento: "5 min caminhada", zona_aquecimento: "Z1", principal: "30 min corrida contínua em pace 7'45\"/km - 8'30\"/km. Mais lento que segunda. Em subidas, mantém esforço, não o pace.", zona_principal: "Z2", desaquecimento: "5 min caminhada", zona_desaquecimento: "Z1", duracao_total: "40 min", distancia_km: 6.0, pace_alvo_central_segundos: 488 },
-      esteira: { aquecimento: "5 min caminhada a 5,0 km/h", zona_aquecimento: "Z1", principal: "30 min a 6,5-7,0 km/h", zona_principal: "Z2", desaquecimento: "5 min caminhada a 5,0 km/h", zona_desaquecimento: "Z1", duracao_total: "40 min", distancia_km: 6.0 }
-    }
-  ],
-  observacao_coach: "Paces vão parecer lentos e devem parecer. Fase base é assim. A tentação de correr mais rápido é o principal caminho para lesão no joelho."
-};
 
 /* ========== STORAGE ========== */
 const KEYS = { week: 'runcoach_semana_atual', logs: 'runcoach_logs', history: 'runcoach_historico_semanas', races: 'runcoach_corridas' };
@@ -464,9 +360,9 @@ function setLogs(l) { save(KEYS.logs, l); }
 function getHistory() { return load(KEYS.history, []); }
 function setHistory(h) { save(KEYS.history, h); }
 function getRaces() {
+  // Corridas salvas são preservadas; instalação nova começa vazia (sem seed).
   const stored = localStorage.getItem(KEYS.races);
   if (stored) { try { return JSON.parse(stored); } catch { return []; } }
-  if (localStorage.getItem(KEYS.week)) { save(KEYS.races, RACES_DEFAULT); return RACES_DEFAULT; }
   return [];
 }
 function setRaces(r) { save(KEYS.races, r); }
@@ -1780,29 +1676,18 @@ async function doGistSync() {
 
 const PROTOCOLO_JOELHO_KEY = 'runcoach_protocolo_joelho';
 
-const PROTOCOLO_JOELHO_DEFAULT = {
+// Placeholder generico usado quando o coach envia o protocolo APENAS como treino
+// na lista (sem o campo protocolo_joelho com o conteudo). Nao sao dados de
+// ninguem: so garante que a atividade de protocolo seja reconhecida; o conteudo
+// real vem do coach ou fisioterapeuta do proprio usuario.
+const PROTOCOLO_JOELHO_PLACEHOLDER = {
   nome: 'Protocolo de Fortalecimento do Joelho',
   dia: 'Terça',
-  duracao_estimada: '45-55 min',
+  duracao_estimada: '',
   exercicios: [
-    { nome: 'Ponte Glútea com Peso', series: 3, reps: 15, descanso_segundos: 60,
-      execucao: ['Deite de costas, joelhos flexionados a 90°, pés apoiados no chão','Coloque um anilho ou haltere sobre o quadril','Empurre o quadril para cima contraindo o glúteo no topo','2s subindo, 2s no pico, 2s descendo','Não hiperestenda a lombar no topo'],
-      carga: 'Sem peso inicialmente. Adicione quando conseguir manter a contração no topo por 2s sem compensar com a lombar.' },
-    { nome: 'Cadeira Abdutora', series: 3, reps: 15, descanso_segundos: 60,
-      execucao: ['Sente com as costas apoiadas, joelhos a 90°','Almofadas na parte externa das coxas','Abra as pernas contra a resistência de forma controlada','2s abrindo, 1s no pico, 2s voltando','Não bata as pernas ao retornar'],
-      carga: 'Leve a moderada. Deve sentir o glúteo lateral, não o joelho.' },
-    { nome: 'Agachamento no Smith', series: 3, reps: 12, descanso_segundos: 90,
-      execucao: ['Pés afastados na largura dos ombros, ligeiramente abertos (30°)','Barra apoiada na parte média do trapézio','Desça até 90° de joelho, não além','Joelhos sempre apontando na direção dos pés','3s descendo, 1s subindo','Tronco ereto e core contraído'],
-      carga: 'Sem peso adicional inicialmente. Adicione só com técnica sólida.' },
-    { nome: 'Leg Press 45° Unilateral', series: 3, reps: 12, descanso_segundos: 60,
-      execucao: ['Uma perna de cada vez, pé centralizado na plataforma','Desça até 90° de flexão, nunca além','3s descendo, 1s subindo','Joelho alinhado com o segundo dedo do pé','Não trave o joelho no topo'],
-      carga: '20-30% do que usaria bilateral. Objetivo é ativação, não carga máxima.' },
-    { nome: 'Mesa Flexora', series: 3, reps: 12, descanso_segundos: 60,
-      execucao: ['Deite de bruços, joelhos levemente fora da borda','Flexione trazendo os calcanhares aos glúteos','2s subindo, 1s no pico, 3s descendo (excêntrico lento é o mais importante)','Não levante o quadril durante o movimento'],
-      carga: 'Moderada. O excêntrico lento de 3s protege o tendão.' },
-    { nome: 'Elevação de Panturrilha em Pé', series: 3, reps: 20, descanso_segundos: 45,
-      execucao: ['Pés paralelos na largura do quadril','Pontas dos pés em um degrau para amplitude total','Suba nas pontas dos pés o máximo possível','1s subindo, 1s no pico, 3s descendo (excêntrico lento)'],
-      carga: 'Peso corporal. Pode evoluir para unilateral quando ficar fácil.' },
+    { nome: 'Fortalecimento do joelho', series: 1, reps: 1, descanso_segundos: 0,
+      execucao: ['Siga o protocolo de fortalecimento indicado pelo seu coach ou fisioterapeuta.'],
+      carga: '' },
   ]
 };
 
@@ -3597,9 +3482,10 @@ function previewSemana(back) {
           protErro = true;
         }
       } else if (entradaProt) {
-        // Protocolo veio APENAS como treino na lista: mantém o conteúdo já salvo
-        // (ou o padrão) e usa o dia informado na entrada.
-        const base = getProtocoloJoelho() || PROTOCOLO_JOELHO_DEFAULT;
+        // Protocolo veio APENAS como treino na lista (sem o campo com conteúdo):
+        // mantém o protocolo já salvo do próprio usuário, se houver; senão usa um
+        // placeholder genérico (nunca dados de outra pessoa). Usa o dia da entrada.
+        const base = getProtocoloJoelho() || PROTOCOLO_JOELHO_PLACEHOLDER;
         localStorage.setItem(PROTOCOLO_JOELHO_KEY, JSON.stringify({ ...base, dia: entradaProt.dia || base.dia }));
         protImportado = true;
       } else {
@@ -4384,8 +4270,11 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.6.2';
+const APP_VERSION = '4.6.3';
 const CHANGELOG = [
+  { v: '4.6.3', date: '2026-07-20', items: [
+    'Privacidade: instalação nova começa sem corridas, protocolo ou perfil de outra pessoa pré-carregados',
+  ]},
   { v: '4.6.2', date: '2026-07-20', items: [
     'Guia para o coach atualizado: protocolo só no campo, datas AAAA-MM-DD, vínculo de prova e PR manual',
   ]},
@@ -4917,7 +4806,7 @@ function openNomeModal() {
   back.innerHTML = `<div class="modal">
     <h2>Como devemos te chamar?</h2>
     <p class="muted" style="font-size:13px;margin-bottom:10px">Vamos usar seu nome na saudação diária.</p>
-    <div class="field"><label>Seu nome</label><input type="text" id="nmInput" placeholder="Ex: Pedro" value="${escapeHtml(s.name || '')}" autofocus></div>
+    <div class="field"><label>Seu nome</label><input type="text" id="nmInput" placeholder="Como quer ser chamado?" value="${escapeHtml(s.name || '')}" autofocus></div>
     <div class="btn-row">
       <button class="btn outline" id="nmCancel">Cancelar</button>
       <button class="btn" id="nmSave">Salvar</button>
