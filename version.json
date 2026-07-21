@@ -1,5 +1,5 @@
 {
-  "versao": "2026.07.21-0029",
+  "versao": "2026.07.21-1336",
   "data": "2026-07-21",
-  "novidades": ["v4.6.3: Privacidade - instalação nova não herda dados pessoais do Pedro"]
+  "novidades": ["docs: atualiza README para o estado atual do app (v4.6.3)"]
 }
