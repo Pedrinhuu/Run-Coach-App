@@ -2596,7 +2596,7 @@ function openTempoRaceResultPicker(currentSec, comHoras, onConfirm) {
     const h0 = Math.floor((currentSec || 0) / 3600), m0 = Math.floor(((currentSec || 0) % 3600) / 60), s0 = (currentSec || 0) % 60;
     openPicker({
       title: 'Tempo (h : min : seg)',
-      columns: [{ items: hours, initial: Math.min(h0, 9) }, { items: mins, initial: m0 }, { items: secs, initial: s0 }],
+      columns: [{ items: hours, initial: Math.min(h0, 9) }, { items: mins, initial: m0, wrap: true }, { items: secs, initial: s0, wrap: true }],
       separators: [':', ':'],
       onConfirm: ([hi, mi, si]) => { const t = parseInt(hours[hi]) * 3600 + parseInt(mins[mi]) * 60 + parseInt(secs[si]); onConfirm({ seconds: t, text: fmtTempoInput(t) }); }
     });
@@ -2604,7 +2604,7 @@ function openTempoRaceResultPicker(currentSec, comHoras, onConfirm) {
     const m0 = Math.min(59, Math.floor((currentSec || 0) / 60)), s0 = (currentSec || 0) % 60;
     openPicker({
       title: 'Tempo (min : seg)',
-      columns: [{ items: mins, initial: m0 }, { items: secs, initial: s0 }],
+      columns: [{ items: mins, initial: m0, wrap: true }, { items: secs, initial: s0, wrap: true }],
       separators: [':'],
       onConfirm: ([mi, si]) => { const t = parseInt(mins[mi]) * 60 + parseInt(secs[si]); onConfirm({ seconds: t, text: fmtTempoInput(t) }); }
     });
@@ -2949,11 +2949,13 @@ function openLogModal(idx, existingLog) {
   const joelhoIni = def.joelho || 'sem dor';
   const seguiuIni = def.seguiu_parametros === false ? 'nao' : 'sim';
 
+  // Pace-alvo do treino (segundos por km), usado como valor inicial editável no
+  // registro novo. Se o treino não tiver alvo, o campo começa vazio.
+  const paceAlvoSeg = (t && ((t.rua && t.rua.pace_alvo_central_segundos) || (t.esteira && t.esteira.pace_alvo_central_segundos))) || null;
+  const paceInicialTxt = isEdit ? (def.pace_real || '') : (paceAlvoSeg ? fmtPace(paceAlvoSeg) : '');
+
   const histRaw = localStorage.getItem(KEYS.history);
   const historial = histRaw ? JSON.parse(histRaw) : [];
-  console.log('[openLogModal] histRaw:', histRaw);
-  console.log('[openLogModal] historial parsed:', historial);
-  console.log('[openLogModal] semanas encontradas:', historial.length);
   const showSemanaSelect = !isEdit && historial.length > 0;
   let semanaSelectHtml = '';
   if (showSemanaSelect) {
@@ -2985,7 +2987,7 @@ function openLogModal(idx, existingLog) {
       </div>
     </div>
     <div class="field"><label>Data efetiva</label>${pickerInputHtml('fData', def.data ? fmtDateBR(def.data) : fmtDateBR(todayISO()), 'Selecionar data')}</div>
-    <div class="field"><label>Pace médio real</label>${pickerInputHtml('fPace', def.pace_real || '', "ex: 7'45\"")}</div>
+    <div class="field"><label>Pace médio real</label>${pickerInputHtml('fPace', paceInicialTxt, "ex: 7'45\"")}</div>
     <div class="field"><label class="muted" style="font-size:12px">Ou informe a velocidade (km/h):</label>
       <input type="number" id="fVelocidade" min="3" max="20" step="0.1" placeholder="ex: 5.7" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:14px">
     </div>
@@ -3039,7 +3041,7 @@ function openLogModal(idx, existingLog) {
 
   const elPace = back.querySelector('#fPace');
   const paceInicial = parsePace(def.pace_real);
-  elPace.dataset.value = paceInicial != null ? String(paceInicial) : '';
+  elPace.dataset.value = paceInicial != null ? String(paceInicial) : (!isEdit && paceAlvoSeg ? String(paceAlvoSeg) : '');
   elPace.dataset.placeholder = "ex: 7'45\"";
   elPace.addEventListener('click', () => {
     const cur = parseInt(elPace.dataset.value) || 0;
@@ -4270,8 +4272,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.6.3';
+const APP_VERSION = '4.6.4';
 const CHANGELOG = [
+  { v: '4.6.4', date: '2026-07-21', items: [
+    'Seletores de minutos e segundos do pace e tempo agora rolam de forma circular',
+    'Registro de treino já abre com o pace-alvo do treino preenchido, pronto para ajustar',
+  ]},
   { v: '4.6.3', date: '2026-07-20', items: [
     'Privacidade: instalação nova começa sem corridas, protocolo ou perfil de outra pessoa pré-carregados',
   ]},
@@ -5220,14 +5226,21 @@ function scheduleDailyRefresh() {
 
 /* ========== WHEEL PICKER ========== */
 function openPicker({ title, subtitle, columns, separators = [], onConfirm }) {
+  // Colunas com wrap:true rolam de forma circular. Truque: renderizamos várias
+  // cópias da lista e, durante a rolagem, reposicionamos o scroll por múltiplos
+  // exatos da altura de um bloco (invisível, pois os itens ficam idênticos),
+  // dando a ilusão de rolagem infinita. O valor final é raw % tamanho da lista.
+  const COPIES = 5;
   const back = document.createElement('div');
   back.className = 'picker-backdrop';
   let colsHtml = '';
   columns.forEach((c, i) => {
     if (i > 0) colsHtml += `<div class="picker-sep">${separators[i-1] ?? ''}</div>`;
-    colsHtml += `<div class="picker-col" data-col="${i}">
+    const wrap = !!c.wrap && c.items.length > 2;
+    const itens = wrap ? Array(COPIES).fill(c.items).flat() : c.items;
+    colsHtml += `<div class="picker-col" data-col="${i}" data-wrap="${wrap ? '1' : '0'}" data-len="${c.items.length}">
       <div class="picker-col-pad"></div>
-      ${c.items.map(it => `<div class="picker-item">${escapeHtml(String(it))}</div>`).join('')}
+      ${itens.map(it => `<div class="picker-item">${escapeHtml(String(it))}</div>`).join('')}
       <div class="picker-col-pad"></div>
     </div>`;
   });
@@ -5251,15 +5264,36 @@ function openPicker({ title, subtitle, columns, separators = [], onConfirm }) {
       it.classList.toggle('selected', i === idx);
     });
   }
+  // Reposiciona sem animação (a CSS usa scroll-behavior:smooth para o snap).
+  function setScrollInstant(col, top) {
+    const prev = col.style.scrollBehavior;
+    col.style.scrollBehavior = 'auto';
+    col.scrollTop = top;
+    col.style.scrollBehavior = prev;
+  }
 
   colEls.forEach((col, i) => {
-    const initial = Math.max(0, Math.min((columns[i].items.length - 1), columns[i].initial || 0));
+    const len = columns[i].items.length;
+    const wrap = col.dataset.wrap === '1';
+    const initial = Math.max(0, Math.min(len - 1, columns[i].initial || 0));
+    const startIdx = wrap ? (2 * len + initial) : initial; // começa na cópia do meio
+    // Posiciona já, e repete no próximo frame (o layout pode não estar pronto).
+    // Não depender só do rAF: em aba oculta ele não dispara e o picker abriria no topo.
+    setScrollInstant(col, startIdx * ITEM_H);
+    updateSelected(col);
     requestAnimationFrame(() => {
-      col.scrollTop = initial * ITEM_H;
+      setScrollInstant(col, startIdx * ITEM_H);
       updateSelected(col);
     });
     let t;
     col.addEventListener('scroll', () => {
+      if (wrap) {
+        // Mantém o scroll na faixa central [1 cópia, COPIES-1 cópias), com folga
+        // de uma cópia em cada ponta. O deslocamento é invisível (bloco exato).
+        const block = len * ITEM_H;
+        if (col.scrollTop < block) setScrollInstant(col, col.scrollTop + block);
+        else if (col.scrollTop >= block * (COPIES - 1)) setScrollInstant(col, col.scrollTop - block);
+      }
       clearTimeout(t);
       t = setTimeout(() => {
         const idx = Math.round(col.scrollTop / ITEM_H);
@@ -5279,7 +5313,11 @@ function openPicker({ title, subtitle, columns, separators = [], onConfirm }) {
   back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
   back.querySelector('#pkCancel').addEventListener('click', () => back.remove());
   back.querySelector('#pkOk').addEventListener('click', () => {
-    const selected = Array.from(colEls).map(col => Math.round(col.scrollTop / ITEM_H));
+    const selected = Array.from(colEls).map((col, i) => {
+      const raw = Math.round(col.scrollTop / ITEM_H);
+      const len = columns[i].items.length;
+      return col.dataset.wrap === '1' ? ((raw % len) + len) % len : raw;
+    });
     back.remove();
     onConfirm(selected);
   });
@@ -5318,8 +5356,8 @@ function openPacePicker(currentSec, onConfirm) {
   openPicker({
     title: 'Pace por km',
     columns: [
-      { items: mins, initial: Math.max(0, mins.indexOf(String(m0))) },
-      { items: secs, initial: s0 },
+      { items: mins, initial: Math.max(0, mins.indexOf(String(m0))), wrap: true },
+      { items: secs, initial: s0, wrap: true },
     ],
     separators: ["'"],
     onConfirm: ([mi, si]) => {
@@ -5343,8 +5381,8 @@ function openTempoPicker(currentSec, onConfirm) {
     title: 'Tempo (h : min : seg)',
     columns: [
       { items: hours, initial: h0 },
-      { items: mins, initial: m0 },
-      { items: secs, initial: s0 },
+      { items: mins, initial: m0, wrap: true },
+      { items: secs, initial: s0, wrap: true },
     ],
     separators: [':', ':'],
     onConfirm: ([hi, mi, si]) => {
