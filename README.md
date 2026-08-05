@@ -199,6 +199,10 @@ git push origin main
 
 Ao mexer no `index.html`, lembre de subir o `APP_VERSION`, adicionar a entrada no `CHANGELOG` e trocar o nome do cache no `sw.js`, senão o Service Worker continua servindo a versão antiga.
 
+## Desenvolvimento
+
+O desenvolvimento do projeto é conduzido com o Codex.
+
 ## Histórico de Versões
 
 O changelog completo fica **dentro do app**, em Ajustes > Sobre > Histórico de versões. Marcos principais:
@@ -222,4 +226,4 @@ Projeto pessoal. Todos os direitos reservados.
 
 ---
 
-Feito com Claude Code
+Desenvolvido com Codex
