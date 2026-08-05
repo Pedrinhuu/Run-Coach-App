@@ -201,7 +201,9 @@ Ao mexer no `index.html`, lembre de subir o `APP_VERSION`, adicionar a entrada n
 
 ## Desenvolvimento
 
-O desenvolvimento do projeto é conduzido com o Codex.
+O desenvolvimento do projeto é conduzido com o Codex. Para retomar o trabalho em uma nova conversa, leia e atualize o arquivo `HANDOFF_CODEX.md`, que reúne a arquitetura, as regras do projeto, as pendências e os próximos passos.
+
+Para alterações de código, use uma conversa por objetivo: funcionalidade, bug, refatoração ou revisão. Ao concluir a alteração, valide, faça o commit e envie para a branch `main`.
 
 ## Histórico de Versões
 
