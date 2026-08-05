@@ -1,5 +1,5 @@
 {
-  "versao": "2026.08.05-1529",
+  "versao": "2026.08.05-1530",
   "data": "2026-08-05",
-  "novidades": ["docs: organiza continuidade no Codex"]
+  "novidades": ["docs: adiciona orientacao persistente do Codex"]
 }
