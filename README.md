@@ -211,6 +211,7 @@ O changelog completo fica **dentro do app**, em Ajustes > Sobre > Histórico de 
 
 | Versão | Destaques |
 |--------|-----------|
+| **4.7** | Novo sistema visual esportivo, navegação flutuante e Home com identidade de rota |
 | **4.6** | Treino de Prova vinculado à corrida cadastrada, recorde checado pelos dois caminhos, instalação nova sem dados pré-carregados |
 | **4.5** | Recordes pessoais manuais, animação de novo PR, guia para o coach, blindagem contra JSON de formato antigo |
 | **4.4** | Backup automático em Gist privado do GitHub, gráfico de carga semanal |
