@@ -9,4 +9,4 @@
   Service-Worker-Allowed: /
 
 /manifest.json
-  Cache-Control: public, max-age=3600
+  Cache-Control: no-cache, must-revalidate

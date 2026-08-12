@@ -12,7 +12,7 @@ invioláveis, a arquitetura, as armadilhas já descobertas e o fluxo de trabalho
 - **Repositório:** https://github.com/Pedrinhuu/Run-Coach-App
 - **Stack:** HTML + CSS + JavaScript puro, tudo em `index.html` (~5.700 linhas).
 - **Deploy:** push na branch `main` publica no Cloudflare Pages em cerca de 30 segundos.
-- **Versão atual:** 4.7.1 (`APP_VERSION` no index.html, cache `runcoach-v471` no sw.js).
+- **Versão atual:** 4.7.2 (`APP_VERSION` no index.html, cache `runcoach-v472` no sw.js).
 - **Desenvolvimento:** Codex. Alterações concluídas devem receber commit e push na branch `main`.
 - **Usuários reais:** Pedro (dono) e a esposa dele, Jéssica, em instalação separada.
   Vários bugs vieram justamente da instalação dela. Sempre considere o usuário novo.
@@ -211,6 +211,14 @@ com comparação estritamente menor, o que garante idempotência.
 O posicionamento inicial do picker dependia só de rAF e abria no topo quando a aba
 não estava visível. Hoje posiciona de imediato e reforça no frame seguinte.
 
+### Manifesto do PWA fica preso em cache
+O ícone da Home mudou na versão 4.7.1, mas o instalador do Android ainda mostrava a
+marca anterior. A página já era nova; o `manifest.json` antigo vinha do cache do
+Service Worker e do cache HTTP. Desde a 4.7.2, o manifesto usa URL versionada no
+`index.html`, não entra no pré-cache e é buscado com `no-store`. O header exige
+revalidação. Ao mudar ícones ou metadados de instalação, atualize também a versão da
+URL do manifesto.
+
 ---
 
 ## 7. Fluxo de trabalho esperado
@@ -243,7 +251,7 @@ Para **qualquer** mudança em `index.html`:
 
 ---
 
-## 8. Estado atual (v4.7.1)
+## 8. Estado atual (v4.7.2)
 
 Funcionalidades ativas: importação semanal por JSON com preview, cards de treino com
 rua e esteira, modo Em Treino com voz e timer, protocolo de joelho com carrossel,
@@ -260,6 +268,9 @@ preferências já salvas continuam preservadas.
 A marca 4.7.1 usa uma rota geométrica em forma de R, com menta como caminho principal e trechos
 amarelo e coral representando variações de intensidade. O mesmo símbolo aparece na Home, no favicon
 e nos ícones 192 e 512 do manifesto, sem arquivo de imagem externo.
+
+A versão 4.7.2 corrige o manifesto antigo exibido na instalação do Android: a URL do manifesto é
+versionada, sua identidade é fixada por `id: "/"` e o cache deixa de reter metadados anteriores.
 
 Pontos conhecidos, não resolvidos:
 - `PLAN_START` e `PLAN_END` são fixos e definem a barra de progresso para todos os

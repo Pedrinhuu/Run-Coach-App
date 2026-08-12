@@ -1,6 +1,7 @@
 {
   "name": "Run Coach Daily",
   "short_name": "RunCoach",
+  "id": "/",
   "description": "Coaching de corrida diário com plano semanal, métricas e motivação",
   "theme_color": "#0B0D0F",
   "background_color": "#0B0D0F",

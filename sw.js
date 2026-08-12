@@ -1,8 +1,7 @@
-const CACHE = 'runcoach-v471';
+const CACHE = 'runcoach-v472';
 const ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap',
 ];
 
@@ -44,8 +43,8 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/.netlify/functions/')) return;
   if (e.request.method !== 'GET') return;
 
-  if (url.pathname === '/version.json') {
-    e.respondWith(fetch(e.request));
+  if (url.pathname === '/version.json' || url.pathname === '/manifest.json') {
+    e.respondWith(fetch(e.request, { cache: 'no-store' }));
     return;
   }
 

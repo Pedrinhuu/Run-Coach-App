@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0B0D0F" />
 <title>Run Coach Daily</title>
-<link rel="manifest" href="/manifest.json" />
+<link rel="manifest" href="/manifest.json?v=472" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%230B0D0F'/%3E%3Cpath d='M150 402V116h128c70 0 70 114 0 114H150l198 172' fill='none' stroke='%2337F7BA' stroke-width='64' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M238 116h58' stroke='%23FFD34E' stroke-width='64'/%3E%3Cpath d='M250 317l46 40' stroke='%23FF5151' stroke-width='64'/%3E%3Ccircle cx='150' cy='402' r='28' fill='%230B0D0F'/%3E%3Ccircle cx='348' cy='402' r='28' fill='%230B0D0F'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -4363,8 +4363,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.7.1';
+const APP_VERSION = '4.7.2';
 const CHANGELOG = [
+  { v: '4.7.2', date: '2026-08-12', items: [
+    'Correção do ícone antigo exibido ao instalar o app no celular',
+    'Manifesto de instalação agora é atualizado sem reutilizar a cópia anterior',
+  ]},
   { v: '4.7.1', date: '2026-08-12', items: [
     'Nova marca em forma de rota, alinhada ao visual esportivo do app',
     'Ícone do PWA renovado para funcionar melhor na tela inicial do celular',
