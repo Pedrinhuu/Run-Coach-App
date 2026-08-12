@@ -12,7 +12,7 @@ invioláveis, a arquitetura, as armadilhas já descobertas e o fluxo de trabalho
 - **Repositório:** https://github.com/Pedrinhuu/Run-Coach-App
 - **Stack:** HTML + CSS + JavaScript puro, tudo em `index.html` (~5.700 linhas).
 - **Deploy:** push na branch `main` publica no Cloudflare Pages em cerca de 30 segundos.
-- **Versão atual:** 4.7.0 (`APP_VERSION` no index.html, cache `runcoach-v470` no sw.js).
+- **Versão atual:** 4.7.1 (`APP_VERSION` no index.html, cache `runcoach-v471` no sw.js).
 - **Desenvolvimento:** Codex. Alterações concluídas devem receber commit e push na branch `main`.
 - **Usuários reais:** Pedro (dono) e a esposa dele, Jéssica, em instalação separada.
   Vários bugs vieram justamente da instalação dela. Sempre considere o usuário novo.
@@ -243,7 +243,7 @@ Para **qualquer** mudança em `index.html`:
 
 ---
 
-## 8. Estado atual (v4.7.0)
+## 8. Estado atual (v4.7.1)
 
 Funcionalidades ativas: importação semanal por JSON com preview, cards de treino com
 rua e esteira, modo Em Treino com voz e timer, protocolo de joelho com carrossel,
@@ -256,6 +256,10 @@ O sistema visual 4.7 usa uma linguagem de painel esportivo: superfícies em carv
 menta para desempenho, amarelo e coral para estados, cartões amplos, navegação inferior flutuante
 e uma identidade de rota abstrata na Home. O modo escuro é o padrão apenas para instalações novas;
 preferências já salvas continuam preservadas.
+
+A marca 4.7.1 usa uma rota geométrica em forma de R, com menta como caminho principal e trechos
+amarelo e coral representando variações de intensidade. O mesmo símbolo aparece na Home, no favicon
+e nos ícones 192 e 512 do manifesto, sem arquivo de imagem externo.
 
 Pontos conhecidos, não resolvidos:
 - `PLAN_START` e `PLAN_END` são fixos e definem a barra de progresso para todos os

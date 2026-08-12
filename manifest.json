@@ -10,13 +10,13 @@
   "scope": "/",
   "icons": [
     {
-      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%23FF5C00'/><text x='50%25' y='58%25' text-anchor='middle' font-family='Arial' font-size='78' font-weight='bold' fill='white'>RCD</text></svg>",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%230B0D0F'/%3E%3Cpath d='M150 402V116h128c70 0 70 114 0 114H150l198 172' fill='none' stroke='%2337F7BA' stroke-width='64' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M238 116h58' stroke='%23FFD34E' stroke-width='64'/%3E%3Cpath d='M250 317l46 40' stroke='%23FF5151' stroke-width='64'/%3E%3Ccircle cx='150' cy='402' r='28' fill='%230B0D0F'/%3E%3Ccircle cx='348' cy='402' r='28' fill='%230B0D0F'/%3E%3C/svg%3E",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23FF5C00'/><text x='50%25' y='58%25' text-anchor='middle' font-family='Arial' font-size='208' font-weight='bold' fill='white'>RCD</text></svg>",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%230B0D0F'/%3E%3Cpath d='M150 402V116h128c70 0 70 114 0 114H150l198 172' fill='none' stroke='%2337F7BA' stroke-width='64' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M238 116h58' stroke='%23FFD34E' stroke-width='64'/%3E%3Cpath d='M250 317l46 40' stroke='%23FF5151' stroke-width='64'/%3E%3Ccircle cx='150' cy='402' r='28' fill='%230B0D0F'/%3E%3Ccircle cx='348' cy='402' r='28' fill='%230B0D0F'/%3E%3C/svg%3E",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"

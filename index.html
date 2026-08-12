@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0B0D0F" />
 <title>Run Coach Daily</title>
 <link rel="manifest" href="/manifest.json" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%230B0D0F'/%3E%3Cpath d='M150 402V116h128c70 0 70 114 0 114H150l198 172' fill='none' stroke='%2337F7BA' stroke-width='64' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M238 116h58' stroke='%23FFD34E' stroke-width='64'/%3E%3Cpath d='M250 317l46 40' stroke='%23FF5151' stroke-width='64'/%3E%3Ccircle cx='150' cy='402' r='28' fill='%230B0D0F'/%3E%3Ccircle cx='348' cy='402' r='28' fill='%230B0D0F'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -293,7 +294,8 @@
   .header-actions{gap:8px}
   .home-toolbar{margin-bottom:14px!important}
   .home-brand{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:800;letter-spacing:1.7px;color:#161A18}
-  .home-brand-mark{width:34px;height:34px;border-radius:12px;background:#111513;color:#37F7BA;display:inline-flex;align-items:center;justify-content:center;font-size:17px;letter-spacing:-1px;transform:rotate(-6deg)}
+  .home-brand-mark{width:36px;height:36px;border-radius:12px;background:#0B0D0F;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;transform:rotate(-4deg)}
+  .home-brand-mark svg{width:100%;height:100%;display:block}
   #greetingCard.hero-card{min-height:178px;background:#101312!important;color:#F5F7F8!important;border:none!important;border-radius:30px!important;padding:24px!important;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;box-shadow:0 20px 42px rgba(5,10,8,.22)}
   #greetingCard.hero-card::before{content:'';position:absolute;width:176px;height:176px;border:24px solid rgba(55,247,186,.14);border-radius:50%;right:-52px;top:-68px}
   #greetingCard.hero-card::after{content:'';position:absolute;width:190px;height:6px;border-radius:999px;background:linear-gradient(90deg,#37F7BA 0 32%,#FFD34E 32% 58%,#FF5151 58% 100%);right:-38px;top:78px;transform:rotate(-28deg);box-shadow:0 0 0 7px rgba(255,255,255,.025)}
@@ -348,7 +350,7 @@
   [data-theme="dark"] .muted{color:#99A39E}
   [data-theme="dark"] .help-btn{background:#1B201D;color:#F5F7F8;box-shadow:none}
   [data-theme="dark"] .home-brand{color:#F5F7F8}
-  [data-theme="dark"] .home-brand-mark{background:#37F7BA;color:#07130F}
+  [data-theme="dark"] .home-brand-mark{background:#0B0D0F;box-shadow:0 0 0 1px #252B28}
   [data-theme="dark"] .daily-card{background:#151917}
   [data-theme="dark"] .btn{background:#37F7BA;color:#07130F;box-shadow:none}
   [data-theme="dark"] .btn.secondary{background:#242A26;color:#F5F7F8}
@@ -657,7 +659,7 @@ function renderHome() {
   const hasWeek = !!localStorage.getItem(KEYS.week);
 
   let html = `<div class="row between home-toolbar" style="margin-bottom:12px">
-    <div class="home-brand"><span class="home-brand-mark">R</span><span>Run Coach</span></div>
+    <div class="home-brand"><span class="home-brand-mark" aria-hidden="true"><svg viewBox="0 0 512 512"><rect width="512" height="512" fill="#0B0D0F"/><path d="M150 402V116h128c70 0 70 114 0 114H150l198 172" fill="none" stroke="#37F7BA" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/><path d="M238 116h58" stroke="#FFD34E" stroke-width="64"/><path d="M250 317l46 40" stroke="#FF5151" stroke-width="64"/><circle cx="150" cy="402" r="28" fill="#0B0D0F"/><circle cx="348" cy="402" r="28" fill="#0B0D0F"/></svg></span><span>Run Coach</span></div>
     <div class="header-actions">
       <span class="bell-wrap" id="bellWrap"><button class="help-btn" id="btnBell" aria-label="Atualização">🔔</button><span class="bell-dot" id="bellDot" style="display:none">1</span></span>
       <button class="help-btn" id="btnSettings" aria-label="Configurações">⚙</button>
@@ -4361,8 +4363,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.7.0';
+const APP_VERSION = '4.7.1';
 const CHANGELOG = [
+  { v: '4.7.1', date: '2026-08-12', items: [
+    'Nova marca em forma de rota, alinhada ao visual esportivo do app',
+    'Ícone do PWA renovado para funcionar melhor na tela inicial do celular',
+  ]},
   { v: '4.7.0', date: '2026-08-11', items: [
     'Novo visual esportivo com cartões amplos, navegação flutuante e dados em destaque',
     'Home renovada com identidade de rota e melhor hierarquia para o próximo treino',
