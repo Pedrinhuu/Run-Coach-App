@@ -1,5 +1,5 @@
 {
-  "versao": "2026.08.12-1634",
+  "versao": "2026.08.12-1647",
   "data": "2026-08-12",
-  "novidades": ["v4.7.1: renova marca com rota em movimento"]
+  "novidades": ["v4.7.2: evita manifesto antigo no cache da instalação"]
 }
