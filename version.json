@@ -1,5 +1,5 @@
 {
-  "versao": "2026.08.12-1647",
-  "data": "2026-08-12",
-  "novidades": ["v4.7.2: evita manifesto antigo no cache da instalação"]
+  "versao": "2026.08.17-1928",
+  "data": "2026-08-17",
+  "novidades": ["v4.7.3: deriva distância da duração e do pace"]
 }
