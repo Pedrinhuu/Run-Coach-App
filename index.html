@@ -735,8 +735,7 @@ function renderHome() {
       const t = w.treinos[idx];
       const mode = trainModeByIdx[idx] || 'rua';
       const data = t[mode];
-      const distKm = getDistanciaKm(t, mode);
-      const info = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
+      const info = formatarResumoTreino(t, mode);
       html += `<div class="card next-workout" style="border:1px solid #f97316">
         <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px;color:#f97316">Próximo treino</div>
         <div style="font-weight:700;font-size:15px">${escapeHtml(t.dia)} — ${escapeHtml(t.tipo)}</div>
@@ -1067,8 +1066,7 @@ function renderSemana() {
       const showRealocar = isPastPredicted(idx);
       const isNextPending = prox && prox.tipo === 'corrida' && prox.idx === idx;
       const cardBorder = isNextPending ? 'border:1px solid #f97316' : '';
-      const distKm = getDistanciaKm(t, mode);
-      const duracaoDistHtml = [distKm ? `${distKm.toFixed(1)} km` : '', data?.duracao_total || ''].filter(Boolean).join(' · ');
+      const duracaoDistHtml = formatarResumoTreino(t, mode);
       html += `<div class="card" ${isNextPending ? 'id="nextPendingCard"' : ''} style="${cardBorder}">
         ${zoneBarHtml(data)}
         <div class="row between">
@@ -2007,14 +2005,18 @@ function buildIntervalsDescription(bloco, zonas, treino) {
   if (infoLines.length) corpo.push(infoLines.join('\n'));
   corpo.push(mainLines.join('\n'));
 
-  // Linha de distância e duração estimadas (só existe se houver distância)
+  // Linha de distância e duração estimadas. Em treino por tempo, a corrida
+  // principal é derivada do pace; aquecimento e desaquecimento sem pace não entram.
   let distLine = null;
-  let distVal = treino?.distancia_km;
-  if (distVal == null) distVal = treino?.rua?.distancia_km;
-  if (distVal == null) distVal = treino?.esteira?.distancia_km;
-  if (distVal != null) {
-    const dur = bloco.duracao_total || treino?.rua?.duracao_total || treino?.esteira?.duracao_total || null;
-    distLine = `Distância estimada: ${Number(distVal).toFixed(1)} km${dur ? ` | ${dur}` : ''}`;
+  const dur = bloco.duracao_total || treino?.rua?.duracao_total || treino?.esteira?.duracao_total || null;
+  const estimativa = /\bprova\b/i.test(String(treino?.tipo || '')) ? null : estimarDistanciaCorrida(bloco);
+  if (estimativa) {
+    const corrida = formatarEstimativaCorrida(estimativa);
+    distLine = `${corrida.charAt(0).toUpperCase() + corrida.slice(1)}${dur ? ` | ${dur}` : ''}`;
+  } else {
+    let distVal = bloco.distancia_km;
+    if (distVal == null) distVal = treino?.distancia_km;
+    if (distVal != null) distLine = `Distância estimada: ${formatarKm(distVal)} km${dur ? ` | ${dur}` : ''}`;
   }
 
   // Cabeçalho: objetivo e linha de distância (omitidos silenciosamente se ausentes)
@@ -2263,11 +2265,125 @@ function zoneBarHtml(data) {
   return `<div class="zone-bar">${segments.map(s => `<div class="zone-bar-seg" style="width:${s.pct.toFixed(1)}%;background:${s.color}"></div>`).join('')}</div>`;
 }
 
+function paceParaSegundos(pace) {
+  const m = String(pace || '').match(/^(\d+):(\d{2})$/);
+  if (!m) return null;
+  const segundos = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  return segundos > 0 ? segundos : null;
+}
+
+function estimarDistanciaCorrida(bloco) {
+  if (!bloco || typeof bloco !== 'object') return null;
+
+  const cfg = bloco.intervalos;
+  if (cfg && Number(cfg.ciclos) > 0 && Array.isArray(cfg.fases) && cfg.fases.length > 0) {
+    let minimoCiclo = 0;
+    let maximoCiclo = 0;
+    for (const fase of cfg.fases) {
+      const duracaoSegundos = Number(fase?.duracao_segundos);
+      const faixa = extrairPaceRange(fase?.referencia);
+      const paceA = paceParaSegundos(faixa.inicio);
+      const paceB = paceParaSegundos(faixa.fim);
+      if (!(duracaoSegundos > 0) || !paceA || !paceB) return null;
+      const paceRapido = Math.min(paceA, paceB);
+      const paceLento = Math.max(paceA, paceB);
+      minimoCiclo += duracaoSegundos / paceLento;
+      maximoCiclo += duracaoSegundos / paceRapido;
+    }
+    const ciclos = Number(cfg.ciclos);
+    const minimoKm = minimoCiclo * ciclos;
+    const maximoKm = maximoCiclo * ciclos;
+    return { minimoKm, maximoKm, mediaKm: (minimoKm + maximoKm) / 2 };
+  }
+
+  const minutosPrincipal = extrairMinutos(bloco.principal);
+  const minutosTotal = extrairTotalMinutos(bloco.duracao_total);
+  if (!minutosPrincipal && !minutosTotal) return null;
+  const duracaoMin = minutosPrincipal || calcPrincipalMin(bloco);
+  if (!(duracaoMin > 0)) return null;
+
+  const faixa = extrairPaceRange(bloco.principal);
+  let paceA = paceParaSegundos(faixa.inicio);
+  let paceB = paceParaSegundos(faixa.fim);
+  if (!paceA || !paceB) {
+    const paceCentral = Number(bloco.pace_alvo_central_segundos);
+    if (!(paceCentral > 0)) return null;
+    paceA = paceCentral;
+    paceB = paceCentral;
+  }
+
+  const paceRapido = Math.min(paceA, paceB);
+  const paceLento = Math.max(paceA, paceB);
+  const duracaoSegundos = duracaoMin * 60;
+  const minimoKm = duracaoSegundos / paceLento;
+  const maximoKm = duracaoSegundos / paceRapido;
+  return { minimoKm, maximoKm, mediaKm: (minimoKm + maximoKm) / 2 };
+}
+
+function estimarDistanciaTreino(t, mode) {
+  if (!t || /\bprova\b/i.test(String(t.tipo || ''))) return null;
+  return estimarDistanciaCorrida(t[mode]);
+}
+
+function formatarKm(km) {
+  return Number(km).toFixed(1).replace('.', ',');
+}
+
+function formatarEstimativaCorrida(estimativa) {
+  if (!estimativa) return '';
+  const minimo = formatarKm(estimativa.minimoKm);
+  const maximo = formatarKm(estimativa.maximoKm);
+  return minimo === maximo ? `corrida estimada: ~${minimo} km` : `corrida estimada: ${minimo}–${maximo} km`;
+}
+
+function getDistanciaInformadaKm(t, mode) {
+  const data = t?.[mode];
+  const modalidade = Number(data?.distancia_km);
+  if (modalidade > 0) return modalidade;
+  const geral = Number(t?.distancia_km);
+  return geral > 0 ? geral : null;
+}
+
 function getDistanciaKm(t, mode) {
-  const data = t[mode];
-  if (data && data.distancia_km) return data.distancia_km;
-  if (t.distancia_km) return t.distancia_km;
-  return null;
+  const estimativa = estimarDistanciaTreino(t, mode);
+  if (estimativa) return estimativa.mediaKm;
+  return getDistanciaInformadaKm(t, mode);
+}
+
+function formatarResumoTreino(t, mode) {
+  const data = t?.[mode];
+  const partes = [];
+  if (data?.duracao_total) partes.push(escapeHtml(data.duracao_total));
+  const estimativa = estimarDistanciaTreino(t, mode);
+  if (estimativa) {
+    partes.push(formatarEstimativaCorrida(estimativa));
+  } else {
+    const distancia = getDistanciaInformadaKm(t, mode);
+    if (distancia) partes.push(`${formatarKm(distancia)} km`);
+  }
+  return partes.join(' · ');
+}
+
+function recalcularDistanciasSemanaPorTempo(semana) {
+  const ajustes = [];
+  if (!semana || !Array.isArray(semana.treinos)) return ajustes;
+  for (const treino of semana.treinos) {
+    if (!treino || typeof treino !== 'object' || /\bprova\b/i.test(String(treino.tipo || ''))) continue;
+    let recalculouModalidade = false;
+    for (const mode of ['rua', 'esteira']) {
+      const bloco = treino[mode];
+      const estimativa = estimarDistanciaCorrida(bloco);
+      if (!estimativa) continue;
+      const informada = getDistanciaInformadaKm(treino, mode);
+      if (informada && (informada < estimativa.minimoKm - 0.05 || informada > estimativa.maximoKm + 0.05)) {
+        ajustes.push({ dia: treino.dia || '?', mode, informada, estimativa });
+      }
+      bloco.distancia_km = Number(estimativa.mediaKm.toFixed(2));
+      recalculouModalidade = true;
+    }
+    if (recalculouModalidade && Object.prototype.hasOwnProperty.call(treino, 'distancia_km')) delete treino.distancia_km;
+  }
+  return ajustes;
 }
 
 function calcVolumeSemanal(w) {
@@ -3427,17 +3543,25 @@ function previewSemana(back) {
     out.innerHTML = `<div class="card alert-red">${escapeHtml(val.erro)}</div>`;
     return;
   }
+  const ajustesDistancia = recalcularDistanciasSemanaPorTempo(nextWeek);
 
   let html = `<hr class="sep">
     <h3>Semana ${nextWeek.semana || '?'} · ${escapeHtml(nextWeek.fase || '-')}</h3>
     <div class="muted" style="font-size:12px;margin:4px 0 10px">${escapeHtml(nextWeek.foco_da_semana || '')}</div>`;
   if (nextWeek.alerta_coach) html += `<div class="card alert-red" style="font-size:13px">${escapeHtml(nextWeek.alerta_coach)}</div>`;
+  if (ajustesDistancia.length > 0) {
+    html += `<div class="card" style="border-left:3px solid var(--accent);font-size:13px">
+      <strong>${ajustesDistancia.length} distância${ajustesDistancia.length > 1 ? 's incompatíveis foram recalculadas' : ' incompatível foi recalculada'}</strong>
+      <div class="muted" style="margin-top:4px">Em treinos por tempo, a duração é fixa e a corrida estimada vem do pace do bloco principal.</div>
+    </div>`;
+  }
   for (const t of nextWeek.treinos) {
+    const resumoRua = formatarResumoTreino(t, 'rua');
     html += `<div class="card">
       <strong>${escapeHtml(t.dia || '?')} — ${escapeHtml(t.tipo || '?')}</strong>
       <div class="muted" style="font-size:12px;margin-top:4px">${escapeHtml(t.objetivo || '')}</div>
       <div class="train-section"><div class="label">Rua · Principal</div><div class="text">${escapeHtml(t.rua?.principal || '-')}</div></div>
-      <div class="train-section"><div class="label">Duração</div><div class="text num">${escapeHtml(t.rua?.duracao_total || '-')}</div></div>
+      <div class="train-section"><div class="label">Planejamento</div><div class="text num">${resumoRua || '-'}</div></div>
     </div>`;
   }
   if (nextWeek.protocolo_joelho) {
@@ -4363,8 +4487,12 @@ function encerrarTreino(cancelado) {
 }
 
 /* ========== CHANGELOG ========== */
-const APP_VERSION = '4.7.2';
+const APP_VERSION = '4.7.3';
 const CHANGELOG = [
+  { v: '4.7.3', date: '2026-08-17', items: [
+    'Treinos por tempo agora calculam a corrida estimada pela duração e pelo pace do bloco principal',
+    'Faixas de pace exibem uma faixa de distância e a importação recalcula valores incompatíveis',
+  ]},
   { v: '4.7.2', date: '2026-08-12', items: [
     'Correção do ícone antigo exibido ao instalar o app no celular',
     'Manifesto de instalação agora é atualizado sem reutilizar a cópia anterior',
@@ -4729,8 +4857,8 @@ function templateSemanaImport() {
         dia: "",
         tipo: "",
         objetivo: "",
-        rua: { aquecimento: "", principal: "", desaquecimento: "", duracao_total: "", distancia_km: 0, pace_alvo_central_segundos: 0 },
-        esteira: { aquecimento: "", principal: "", desaquecimento: "", duracao_total: "", distancia_km: 0 }
+        rua: { aquecimento: "", principal: "", desaquecimento: "", duracao_total: "", distancia_km: null, pace_alvo_central_segundos: 0 },
+        esteira: { aquecimento: "", principal: "", desaquecimento: "", duracao_total: "", distancia_km: null }
       },
       {
         dia: "",
@@ -4765,6 +4893,7 @@ function guiaCoachTexto() {
     'Regras de formato (o app depende delas, siga à risca):',
     '- "treinos": uma entrada por dia de treino, com "dia" (Segunda a Domingo), "tipo", "objetivo" e os blocos "rua" e "esteira".',
     '- "pace_alvo_central_segundos": pace em segundos por km (ex: 7\'30" = 450).',
+    '- TREINO POR TEMPO: "duracao_total" é a referência fixa. Informe no texto de "principal" a duração do bloco e o pace ou faixa de pace. A distância da corrida será calculada pelo app; aquecimento e desaquecimento sem pace não entram nessa estimativa. "distancia_km" pode ser null, pois qualquer valor incompatível será recalculado.',
     '- Treino intervalado usa "intervalos" com "ciclos" e "fases".',
     '- DATAS: sempre no formato AAAA-MM-DD (ex: "2026-08-10"). Nunca ano solto ("2027") nem DD/MM/AAAA. Se não souber a data de uma prova, é melhor omitir a prova do que mandar data incompleta.',
     '- PROTOCOLO DE JOELHO: envie SOMENTE no campo de nível superior "protocolo_joelho", NUNCA como uma entrada de treino na lista "treinos". Use "protocolo_joelho": null quando não houver dor ou lesão no joelho. Quando houver, preencha os exercícios (o app não preenche sozinho; se vier vazio, o card não aparece), neste formato:',
@@ -5010,7 +5139,7 @@ function openSettingsModal() {
           • <code>foco_da_semana</code> / <code>observacao_coach</code>: objetivo e observação livre.<br>
           • <code>alerta_coach</code>: aviso importante, ou null.<br>
           • <code>treinos</code>: lista de treinos. Cada um com <code>dia</code>, <code>tipo</code>, <code>objetivo</code> e os blocos <code>rua</code> e <code>esteira</code>.<br>
-          • Em <code>rua</code>/<code>esteira</code>: <code>aquecimento</code>, <code>principal</code>, <code>desaquecimento</code>, <code>duracao_total</code>, <code>distancia_km</code>, zonas <code>Z1</code> a <code>Z5</code> e <code>pace_alvo_central_segundos</code> (pace em segundos por km). Treino intervalado usa <code>intervalos</code> com <code>ciclos</code> e <code>fases</code>.<br>
+          • Em <code>rua</code>/<code>esteira</code>: <code>aquecimento</code>, <code>principal</code>, <code>desaquecimento</code>, <code>duracao_total</code>, <code>distancia_km</code>, zonas <code>Z1</code> a <code>Z5</code> e <code>pace_alvo_central_segundos</code> (pace em segundos por km). Em treino por tempo, a duração é fixa e a distância é recalculada pelo pace do principal. Treino intervalado usa <code>intervalos</code> com <code>ciclos</code> e <code>fases</code>.<br>
           • <code>prs_manuais</code>: melhores tempos já feitos, para virar recorde no app (ex: <code>{ "distancia_km": 5, "tempo": "30:00" }</code>). Opcional.<br>
           • <code>protocolo_joelho</code>: opcional. Fortalecimento com <code>dia</code> e <code>exercicios</code> (nome, series, reps, execucao).<br>
           • <code>estimativas_provas</code>: opcional. Provas alvo; <code>"nova": true</code> cria, ou casa pelo nome para atualizar.

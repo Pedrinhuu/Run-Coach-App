@@ -12,7 +12,7 @@ invioláveis, a arquitetura, as armadilhas já descobertas e o fluxo de trabalho
 - **Repositório:** https://github.com/Pedrinhuu/Run-Coach-App
 - **Stack:** HTML + CSS + JavaScript puro, tudo em `index.html` (~5.700 linhas).
 - **Deploy:** push na branch `main` publica no Cloudflare Pages em cerca de 30 segundos.
-- **Versão atual:** 4.7.2 (`APP_VERSION` no index.html, cache `runcoach-v472` no sw.js).
+- **Versão atual:** 4.7.3 (`APP_VERSION` no index.html, cache `runcoach-v473` no sw.js).
 - **Desenvolvimento:** Codex. Alterações concluídas devem receber commit e push na branch `main`.
 - **Usuários reais:** Pedro (dono) e a esposa dele, Jéssica, em instalação separada.
   Vários bugs vieram justamente da instalação dela. Sempre considere o usuário novo.
@@ -76,6 +76,10 @@ Busque pelo nome da função, não por número de linha (o arquivo muda toda hor
   PRs manuais. Sempre derivado, nunca persistido.
 - `validarSemanaImport(obj)`: validador único do JSON de importação.
 - `previewSemana(back)`: preview e confirmação do import.
+- `estimarDistanciaCorrida()`, `formatarResumoTreino()` e
+  `recalcularDistanciasSemanaPorTempo()`: derivam a distância do bloco principal em
+  treinos por tempo, exibem faixa quando há faixa de pace e recalculam valores
+  incompatíveis recebidos no JSON.
 - `encontrarCorridaDaProva()`, `registrarResultadoNaCorrida()`,
   `sincronizarTreinoProvaComCorrida()`: vínculo entre treino tipo Prova e corrida
   cadastrada.
@@ -251,7 +255,7 @@ Para **qualquer** mudança em `index.html`:
 
 ---
 
-## 8. Estado atual (v4.7.2)
+## 8. Estado atual (v4.7.3)
 
 Funcionalidades ativas: importação semanal por JSON com preview, cards de treino com
 rua e esteira, modo Em Treino com voz e timer, protocolo de joelho com carrossel,
@@ -271,6 +275,11 @@ e nos ícones 192 e 512 do manifesto, sem arquivo de imagem externo.
 
 A versão 4.7.2 corrige o manifesto antigo exibido na instalação do Android: a URL do manifesto é
 versionada, sua identidade é fixada por `id: "/"` e o cache deixa de reter metadados anteriores.
+
+A versão 4.7.3 trata a duração como referência fixa em treinos prescritos por tempo. A distância da
+corrida é derivada da duração e do pace do bloco principal, com faixa quando o pace também é uma
+faixa. Caminhada de aquecimento ou desaquecimento sem pace não entra na estimativa. Na importação,
+`distancia_km` incompatível é recalculada; treinos de Prova continuam orientados por distância.
 
 Pontos conhecidos, não resolvidos:
 - `PLAN_START` e `PLAN_END` são fixos e definem a barra de progresso para todos os
